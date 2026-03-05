@@ -186,10 +186,18 @@ function saveTask(e) {
     saveData();
 }
 
-// Save data
+// Save data to server
 function saveData() {
-    // In a real app, this would POST to a server
-    localStorage.setItem('dashboard-tasks', JSON.stringify(tasks));
+    // Save to server (persists to tasks.json)
+    fetch('/api/tasks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tasks: tasks })
+    }).catch(err => {
+        console.error('Failed to save tasks:', err);
+        // Fallback to localStorage
+        localStorage.setItem('dashboard-tasks', JSON.stringify(tasks));
+    });
 }
 
 // Render tab content
