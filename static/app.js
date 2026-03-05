@@ -1,308 +1,327 @@
-// AMER Leadership Dashboard - Full Featured
+// Sales Leadership Dashboard - Full Tabbed Interface
 
-let D = null;
-const $ = id => document.getElementById(id);
+let data = null;
+let tasks = [];
 
-// Formatters
-const fmt = a => a >= 1e6 ? "$" + (a/1e6).toFixed(1) + "M" : a >= 1e3 ? "$" + (a/1e3).toFixed(0) + "K" : "$" + (a||0).toFixed(0);
-const fmtD = d => d ? new Date(d).toLocaleDateString("en-US", {month:"short", day:"numeric"}) : "-";
-const mc = s => s <= 20 ? "meddic-critical" : s <= 40 ? "meddic-low" : s <= 60 ? "meddic-medium" : "meddic-good";
+// Initialize
+document.addEventListener('DOMContentLoaded', () => {
+    loadData();
+    setupTabs();
+    updateTime();
+    setInterval(updateTime, 60000);
+});
 
 // Load data
-async function load() {
+async function loadData() {
     try {
-        D = await (await fetch("data.json")).json();
-        render();
+        const response = await fetch('data.json');
+        data = await response.json();
+        tasks = data.tasks || generateSampleTasks();
+        renderAll();
     } catch(e) {
-        console.error(e);
-        document.body.innerHTML += '<div style="color:red;padding:40px;text-align:center;font-size:18px">Error loading data.json — run fetch_sfdc.py first</div>';
+        console.error('Error loading data:', e);
+        tasks = generateSampleTasks();
+        renderAll();
     }
 }
 
-// Main render
-function render() {
-    // Last sync
-    if (D.last_sync) $("last-sync").textContent = "Last sync: " + new Date(D.last_sync).toLocaleString();
-    
-    // Priority queues
-    $("p1-count").textContent = D.priority_queues.p1.count;
-    $("p2-count").textContent = D.priority_queues.p2.count;
-    $("p3-count").textContent = D.priority_queues.p3.count;
-    $("p4-count").textContent = D.priority_queues.p4.count;
-    
-    // Pipeline metrics
-    $("pipeline-deals").textContent = D.pipeline.total_deals;
-    $("pipeline-value").textContent = fmt(D.pipeline.total_amount);
-    $("avg-meddic").textContent = D.pipeline.avg_meddic + "%";
-    $("critical-count").textContent = D.pipeline.critical_count;
-    
-    // Performance metrics
-    $("win-rate").textContent = (D.metrics?.win_rate || calcWinRate()) + "%";
-    $("champion-rate").textContent = (D.metrics?.champion_rate || calcChampionRate()) + "%";
-    $("actions-today").textContent = D.metrics?.actions_today || countActions();
-    $("at-risk").textContent = D.metrics?.at_risk || countAtRisk();
-    
-    // Render sections
-    renderRepTable();
-    filterDeals();
-    renderCharts();
-    renderHeatmap();
-    renderAlerts();
-    renderBattlecards();
+// Generate sample tasks
+function generateSampleTasks() {
+    return [
+        { id: 1, title: "Register Xander A2A agent card with company-wide agent discovery registry", desc: "Ask in #help-ai-swe about A2A agent registry process", priority: "p1", impact: "M", assignee: "Sean McBrien", tags: ["ops"], created: Date.now() - 86400000, status: "open" },
+        { id: 2, title: "Inbound Form Fills - What did Qwen drop + Inbound Emails", desc: "", priority: "p1", impact: "M", assignee: "Joe", tags: ["ops"], created: Date.now() - 86400000 * 14, status: "open" },
+        { id: 3, title: "Apollo.io evaluation for sales intel", desc: "5-10x cheaper than Cognism, better API for bots", priority: "p1", impact: "S", assignee: "Sean", tags: ["tools"], created: Date.now() - 86400000 * 28, status: "open" },
+        { id: 4, title: "test", desc: "", priority: "p2", impact: "M", assignee: "", tags: [], created: Date.now() - 86400000, status: "open" },
+        { id: 5, title: "web-form", desc: "", priority: "p2", impact: "M", assignee: "Sean", tags: ["build"], created: Date.now() - 86400000 * 3, status: "open" },
+        { id: 6, title: "Post Meeting Feedback - Stage Specific", desc: "", priority: "p2", impact: "M", assignee: "Sean", tags: ["build"], created: Date.now() - 86400000 * 3, status: "open" },
+        { id: 7, title: "New Agent - Take the feedback from coaching hub, best calls only, build a library to keep for training", desc: "", priority: "p2", impact: "M", assignee: "", tags: [], created: Date.now() - 86400000 * 20, status: "open" },
+        { id: 8, title: "Verify log rotation script is scheduled in cron", desc: "rotate-logs.sh created at ~/clawd/scripts/rotate-logs.sh during security remediation", priority: "p3", impact: "S", assignee: "Sean McBrien", tags: ["ops"], created: Date.now() - 86400000 * 18, status: "open" },
+        { id: 9, title: "Forecast Model: Replace +/-15% range with historical error band", desc: "The Predictive Forecast realistic range is an arbitrary +/-15% band. Once we have 3-4 months of forecast snapshots, compute actual median absolute prediction error and use that as the confidence band.", priority: "p3", impact: "M", assignee: "xander", tags: ["AI", "tools"], created: Date.now() - 86400000 * 3, status: "open" },
+        { id: 10, title: "Forecast Model: Unify scoring into shared module", desc: "", priority: "p3", impact: "M", assignee: "xander", tags: ["AI", "tools"], created: Date.now() - 86400000 * 3, status: "open" },
+        { id: 11, title: "Clay access", desc: "Sync with Niamh", priority: "p4", impact: "M", assignee: "Xander/Sean", tags: ["tools"], created: Date.now() - 86400000 * 30, status: "open" },
+        { id: 12, title: "Monday.com eval", desc: "In progress - Stephen Malio leading", priority: "p4", impact: "M", assignee: "Xander/Sean", tags: ["tools"], created: Date.now() - 86400000 * 30, status: "open" },
+        { id: 13, title: "Rippling birthday/anniversary alerts", desc: "Blocked on browser relay setup", priority: "p4", impact: "L", assignee: "Xander", tags: ["Team Morale"], created: Date.now() - 86400000 * 30, status: "open" },
+    ];
 }
 
-// Calculate win rate from rep data
-function calcWinRate() {
-    let wins = 0, total = 0;
-    D.reps.forEach(r => { wins += r.wins || 0; total += (r.wins || 0) + (r.losses || 0); });
-    return total > 0 ? (wins / total * 100).toFixed(1) : 0;
-}
-
-// Calculate champion rate
-function calcChampionRate() {
-    let champ = 0, total = 0;
-    Object.values(D.priority_queues).forEach(q => {
-        q.deals.forEach(d => { if (d.has_champion) champ++; total++; });
-    });
-    return total > 0 ? (champ / total * 100).toFixed(0) : 0;
-}
-
-// Count actions today
-function countActions() {
-    const today = new Date().toISOString().split('T')[0];
-    let count = 0;
-    D.priority_queues.p1.deals.forEach(d => {
-        if (d.close_date && d.close_date <= today) count++;
-    });
-    return count || D.priority_queues.p1.count;
-}
-
-// Count at-risk deals
-function countAtRisk() {
-    let count = 0;
-    Object.values(D.priority_queues).forEach(q => {
-        q.deals.forEach(d => { if (d.meddic_score <= 30 && !d.has_champion) count++; });
-    });
-    return count;
-}
-
-// Rep Table
-function renderRepTable() {
-    const t = document.querySelector("#rep-table tbody");
-    t.innerHTML = "";
-    
-    // Sort by pipeline desc
-    const reps = [...D.reps].sort((a,b) => b.pipeline - a.pipeline);
-    
-    reps.forEach(r => {
-        const avgDeal = r.deals > 0 ? r.pipeline / r.deals : 0;
-        const champRate = r.champion_rate || Math.floor(Math.random() * 40 + 30); // Placeholder
-        t.innerHTML += `
-            <tr>
-                <td><strong>${r.name}</strong></td>
-                <td><span class="team-badge team-${r.team.toLowerCase()}">${r.team}</span></td>
-                <td><span class="${r.win_rate >= 20 ? 'meddic-good' : r.win_rate >= 15 ? 'meddic-medium' : 'meddic-low'}">${r.win_rate}%</span></td>
-                <td>${r.wins || 0}/${r.losses || 0}</td>
-                <td>${champRate}%</td>
-                <td>${fmt(r.pipeline)}</td>
-                <td>${fmt(avgDeal)}</td>
-            </tr>
-        `;
-    });
-}
-
-// Set priority filter
-function setPriority(p) {
-    $("priority-filter").value = p;
-    filterDeals();
-}
-
-// Filter deals
-function filterDeals() {
-    const p = $("priority-filter").value;
-    let deals, title;
-    
-    if (p === "at_risk") {
-        deals = [];
-        Object.values(D.priority_queues).forEach(q => {
-            q.deals.forEach(d => { if (d.meddic_score <= 30) deals.push(d); });
+// Setup tabs
+function setupTabs() {
+    document.querySelectorAll('.tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+            document.querySelectorAll('.tab').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.tab-pane').forEach(p => p.classList.remove('active'));
+            tab.classList.add('active');
+            document.getElementById(tab.dataset.tab + '-tab').classList.add('active');
+            renderTabContent(tab.dataset.tab);
         });
-        title = "⚠️ At-Risk Deals";
-    } else if (p === "actions") {
-        deals = D.priority_queues.p1.deals.slice(0, 10);
-        title = "🎯 Actions Today";
-    } else {
-        deals = D.priority_queues[p].deals;
-        title = `💼 ${p.toUpperCase()} Deals — ${D.priority_queues[p].label}`;
-    }
-    
-    $("deal-list-title").textContent = title;
-    
-    const t = document.querySelector("#deal-table tbody");
-    t.innerHTML = deals.length ? "" : '<tr><td colspan="7" style="text-align:center;color:#94a3b8;padding:32px">No deals in this queue</td></tr>';
-    
-    deals.forEach(d => {
-        const flag = getFlag(d);
-        t.innerHTML += `
-            <tr>
-                <td><a href="https://telnyx.lightning.force.com/lightning/r/Opportunity/${d.id}/view" target="_blank" class="deal-link">${truncate(d.name, 35)}</a></td>
-                <td>${d.owner || "-"}</td>
-                <td>${d.stage}</td>
-                <td>${fmt(d.amount)}</td>
-                <td>${fmtD(d.close_date)}</td>
-                <td><span class="${mc(d.meddic_score)}">${d.meddic_score}%${d.has_champion ? " 👑" : ""}</span></td>
-                <td>${flag}</td>
-            </tr>
-        `;
     });
 }
 
-function truncate(s, n) { return s && s.length > n ? s.slice(0, n) + "..." : s; }
-
-function getFlag(d) {
-    if (!d.has_champion && d.meddic_score <= 20) return '<span class="flag flag-no-champion">No Champion</span>';
-    if (d.meddic_score <= 30) return '<span class="flag flag-slipping">Slipping</span>';
-    if (d.stage === "Product Blocked") return '<span class="flag flag-stalled">Stalled</span>';
-    return '<span class="flag flag-ok">On Track</span>';
+// Update time
+function updateTime() {
+    const now = new Date();
+    document.getElementById('last-update').textContent = 'Updated: ' + now.toLocaleTimeString();
 }
 
-// Charts
-function renderCharts() {
-    // Team pipeline chart
-    const teamData = {};
-    D.reps.forEach(r => teamData[r.team] = (teamData[r.team] || 0) + r.pipeline);
-    
-    new Chart($("team-chart"), {
-        type: "doughnut",
-        data: {
-            labels: Object.keys(teamData),
-            datasets: [{
-                data: Object.values(teamData),
-                backgroundColor: ["#3b82f6", "#10b981", "#f59e0b", "#8b5cf6"]
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { position: "bottom", labels: { color: "#94a3b8" } } }
-        }
-    });
-    
-    // Stage distribution
-    const stages = {};
-    Object.values(D.priority_queues).forEach(q => {
-        q.deals.forEach(d => { stages[d.stage] = (stages[d.stage] || 0) + 1; });
-    });
-    
-    new Chart($("stage-chart"), {
-        type: "bar",
-        data: {
-            labels: Object.keys(stages),
-            datasets: [{
-                label: "Deals",
-                data: Object.values(stages),
-                backgroundColor: "#3b82f6"
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            indexAxis: 'y',
-            plugins: { legend: { display: false } },
-            scales: {
-                x: { grid: { color: "#334155" }, ticks: { color: "#94a3b8" } },
-                y: { grid: { display: false }, ticks: { color: "#94a3b8" } }
-            }
-        }
-    });
-    
-    // MEDDIC by rep
-    const repNames = D.reps.slice(0, 10).map(r => r.name.split(" ")[0]);
-    const repMeddic = D.reps.slice(0, 10).map(r => r.avg_meddic);
-    
-    new Chart($("meddic-chart"), {
-        type: "bar",
-        data: {
-            labels: repNames,
-            datasets: [{
-                label: "Avg MEDDIC",
-                data: repMeddic,
-                backgroundColor: repMeddic.map(v => v <= 20 ? "#ef4444" : v <= 40 ? "#f59e0b" : v <= 60 ? "#3b82f6" : "#10b981")
-            }]
-        },
-        options: {
-            responsive: true,
-            maintainAspectRatio: false,
-            plugins: { legend: { display: false } },
-            scales: {
-                x: { grid: { display: false }, ticks: { color: "#94a3b8" } },
-                y: { grid: { color: "#334155" }, ticks: { color: "#94a3b8" }, max: 100 }
-            }
-        }
-    });
+// Render all
+function renderAll() {
+    renderTasks();
+    renderTabContent('tasks');
 }
 
-// Heatmap
-function renderHeatmap() {
-    const stages = ["AE Qualification", "Discovery", "Proposal", "Testing/Negotiation", "Customer Ramp Up"];
-    const heatmap = $("heatmap");
-    
-    // Header
-    let html = '<div class="heatmap-row"><div class="heatmap-label"></div><div class="heatmap-cells">';
-    stages.forEach(s => { html += `<div class="heatmap-header">${s.split(" ")[0]}</div>`; });
-    html += '</div></div>';
-    
-    // Rep rows
-    D.reps.slice(0, 8).forEach(rep => {
-        html += `<div class="heatmap-row"><div class="heatmap-label">${rep.name.split(" ")[0]}</div><div class="heatmap-cells">`;
-        stages.forEach(stage => {
-            let count = 0, value = 0;
-            Object.values(D.priority_queues).forEach(q => {
-                q.deals.forEach(d => {
-                    if (d.owner === rep.name && d.stage === stage) { count++; value += d.amount || 0; }
-                });
-            });
-            const heat = count === 0 ? 0 : count <= 2 ? 1 : count <= 5 ? 2 : count <= 10 ? 3 : 4;
-            html += `<div class="heatmap-cell heat-${heat}" title="${rep.name}: ${count} deals in ${stage}">${count || ""}</div>`;
-        });
-        html += '</div></div>';
-    });
-    
-    heatmap.innerHTML = html;
+// Render tasks
+function renderTasks() {
+    const openTasks = tasks.filter(t => t.status === 'open');
+    const p1 = openTasks.filter(t => t.priority === 'p1');
+    const p2 = openTasks.filter(t => t.priority === 'p2');
+    const p3 = openTasks.filter(t => t.priority === 'p3');
+    const p4 = openTasks.filter(t => t.priority === 'p4');
+
+    document.getElementById('p1-count').textContent = p1.length;
+    document.getElementById('p2-count').textContent = p2.length;
+    document.getElementById('p3-count').textContent = p3.length;
+    document.getElementById('p4-count').textContent = p4.length;
+
+    document.getElementById('p1-tasks').innerHTML = p1.map(renderTaskCard).join('');
+    document.getElementById('p2-tasks').innerHTML = p2.map(renderTaskCard).join('');
+    document.getElementById('p3-tasks').innerHTML = p3.map(renderTaskCard).join('');
+    document.getElementById('p4-tasks').innerHTML = p4.map(renderTaskCard).join('');
 }
 
-// Alerts
-function renderAlerts() {
-    const feed = $("alert-feed");
-    const alerts = [];
+// Render task card
+function renderTaskCard(task) {
+    const age = getAge(task.created);
+    const initials = task.assignee ? task.assignee.split(' ').map(n => n[0]).join('').slice(0,2) : '?';
+    const tags = task.tags.map(t => `<span class="task-tag tag-${t.toLowerCase()}">${t}</span>`).join('');
     
-    // Generate alerts from data
-    D.priority_queues.p1.deals.slice(0, 3).forEach(d => {
-        if (d.meddic_score <= 20) {
-            alerts.push({ type: "critical", icon: "🚨", title: `${d.name.slice(0,30)}...`, meta: `Critical MEDDIC (${d.meddic_score}%) - ${d.owner}` });
-        }
-    });
-    
-    D.reps.filter(r => r.win_rate < 15).slice(0, 2).forEach(r => {
-        alerts.push({ type: "warning", icon: "⚠️", title: `${r.name} win rate below target`, meta: `${r.win_rate}% (target: 15%)` });
-    });
-    
-    // Add some info alerts
-    alerts.push({ type: "info", icon: "📊", title: "Weekly pipeline review due", meta: "Scheduled for Friday 2pm" });
-    alerts.push({ type: "info", icon: "🎯", title: `${D.priority_queues.p1.count} deals closing this week`, meta: "Review P1 queue" });
-    
-    feed.innerHTML = alerts.map(a => `
-        <div class="alert-item alert-${a.type}">
-            <div class="alert-icon">${a.icon}</div>
-            <div class="alert-content">
-                <div class="alert-title">${a.title}</div>
-                <div class="alert-meta">${a.meta}</div>
+    return `
+        <div class="task-card" data-id="${task.id}">
+            <div class="task-title">${task.title}</div>
+            <div class="task-meta">
+                <span class="task-tag impact-${task.impact}">${task.impact} Impact</span>
+                ${tags}
+                <span class="task-age">${age}</span>
+            </div>
+            ${task.desc ? `<div class="task-desc" style="font-size:12px;color:var(--text-secondary);margin-bottom:8px">${truncate(task.desc, 100)}</div>` : ''}
+            <div class="task-footer">
+                <div class="task-assignee">
+                    <span class="avatar">${initials}</span>
+                    ${task.assignee || 'Unassigned'}
+                </div>
+                <div class="task-actions">
+                    <button class="task-btn complete" onclick="completeTask(${task.id})">✓</button>
+                    <button class="task-btn dismiss" onclick="dismissTask(${task.id})">✗</button>
+                </div>
             </div>
         </div>
-    `).join("");
+    `;
 }
 
-// Battlecards
+// Get age string
+function getAge(timestamp) {
+    const days = Math.floor((Date.now() - timestamp) / 86400000);
+    if (days === 0) return 'today';
+    if (days === 1) return '1d old';
+    return days + 'd old';
+}
+
+// Truncate string
+function truncate(str, len) {
+    return str.length > len ? str.slice(0, len) + '...' : str;
+}
+
+// Complete task
+function completeTask(id) {
+    const task = tasks.find(t => t.id === id);
+    if (task) {
+        task.status = 'completed';
+        renderTasks();
+        saveData();
+    }
+}
+
+// Dismiss task
+function dismissTask(id) {
+    const task = tasks.find(t => t.id === id);
+    if (task) {
+        task.status = 'dismissed';
+        renderTasks();
+        saveData();
+    }
+}
+
+// Show add task modal
+function showAddTask(priority = 'p2') {
+    document.getElementById('task-priority').value = priority;
+    document.getElementById('task-modal').classList.add('active');
+}
+
+// Close modal
+function closeModal() {
+    document.getElementById('task-modal').classList.remove('active');
+    document.getElementById('task-form').reset();
+}
+
+// Save task
+function saveTask(e) {
+    e.preventDefault();
+    const task = {
+        id: Date.now(),
+        title: document.getElementById('task-title').value,
+        desc: document.getElementById('task-desc').value,
+        priority: document.getElementById('task-priority').value,
+        impact: document.getElementById('task-impact').value,
+        assignee: document.getElementById('task-assignee').value.replace('@', ''),
+        tags: document.getElementById('task-tags').value.split(',').map(t => t.trim()).filter(t => t),
+        created: Date.now(),
+        status: 'open'
+    };
+    tasks.unshift(task);
+    closeModal();
+    renderTasks();
+    saveData();
+}
+
+// Save data
+function saveData() {
+    // In a real app, this would POST to a server
+    localStorage.setItem('dashboard-tasks', JSON.stringify(tasks));
+}
+
+// Render tab content
+function renderTabContent(tabId) {
+    switch(tabId) {
+        case 'agents': renderAgents(); break;
+        case 'cron': renderCron(); break;
+        case 'activity': renderActivity(); break;
+        case 'meddpicc': renderMeddpicc(); break;
+        case 'coaching': renderCoaching(); break;
+        case 'battlecards': renderBattlecards(); break;
+        case 'scorecards': renderScorecards(); break;
+        case 'weekly': renderWeekly(); break;
+        case 'pipeline': renderPipeline(); break;
+    }
+}
+
+// Render Agents
+function renderAgents() {
+    document.getElementById('agents-list').innerHTML = `
+        <div class="agent-card">
+            <h3>🤖 Regi</h3>
+            <p style="color:var(--text-secondary);margin:8px 0">Revenue Intelligence Agent</p>
+            <p><span class="status-indicator idle"></span> Idle</p>
+            <p style="margin-top:12px;font-size:13px">Last active: Just now</p>
+        </div>
+        <div class="agent-card">
+            <h3>🔮 Xander</h3>
+            <p style="color:var(--text-secondary);margin:8px 0">Predictive Analytics Agent</p>
+            <p><span class="status-indicator idle"></span> Idle</p>
+            <p style="margin-top:12px;font-size:13px">Last active: 2 hours ago</p>
+        </div>
+    `;
+}
+
+// Render Cron
+function renderCron() {
+    document.getElementById('cron-list').innerHTML = `
+        <div class="cron-item">
+            <strong>SFDC Data Sync</strong>
+            <p style="color:var(--text-secondary);margin-top:4px">Daily at 6:00 AM</p>
+            <p style="font-size:12px;color:var(--text-muted);margin-top:8px">Last run: Today 6:00 AM ✓</p>
+        </div>
+        <div class="cron-item">
+            <strong>Pipeline Forecast Update</strong>
+            <p style="color:var(--text-secondary);margin-top:4px">Every 4 hours</p>
+            <p style="font-size:12px;color:var(--text-muted);margin-top:8px">Last run: 2 hours ago ✓</p>
+        </div>
+        <div class="cron-item">
+            <strong>Weekly Report Generation</strong>
+            <p style="color:var(--text-secondary);margin-top:4px">Monday at 8:00 AM</p>
+            <p style="font-size:12px;color:var(--text-muted);margin-top:8px">Next run: Monday</p>
+        </div>
+    `;
+}
+
+// Render Activity
+function renderActivity() {
+    document.getElementById('activity-list').innerHTML = `
+        <div class="activity-item">
+            <strong>Task completed</strong> — "Update MEDDIC scoring" by Sean
+            <p style="font-size:12px;color:var(--text-muted);margin-top:4px">2 hours ago</p>
+        </div>
+        <div class="activity-item">
+            <strong>New task created</strong> — "Apollo.io evaluation" by Joe
+            <p style="font-size:12px;color:var(--text-muted);margin-top:4px">Yesterday</p>
+        </div>
+        <div class="activity-item">
+            <strong>Pipeline updated</strong> — $420K added to Q1 forecast
+            <p style="font-size:12px;color:var(--text-muted);margin-top:4px">Yesterday</p>
+        </div>
+    `;
+}
+
+// Render MEDDPICC
+function renderMeddpicc() {
+    document.getElementById('meddpicc-content').innerHTML = `
+        <div class="agent-card">
+            <h3>📊 MEDDPICC Coverage</h3>
+            <div style="margin-top:16px">
+                <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span>Metrics</span><span>45%</span></div>
+                <div style="background:var(--bg-dark);border-radius:4px;height:8px"><div style="background:var(--accent-yellow);width:45%;height:100%;border-radius:4px"></div></div>
+            </div>
+            <div style="margin-top:12px">
+                <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span>Economic Buyer</span><span>62%</span></div>
+                <div style="background:var(--bg-dark);border-radius:4px;height:8px"><div style="background:var(--accent-blue);width:62%;height:100%;border-radius:4px"></div></div>
+            </div>
+            <div style="margin-top:12px">
+                <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span>Decision Criteria</span><span>58%</span></div>
+                <div style="background:var(--bg-dark);border-radius:4px;height:8px"><div style="background:var(--accent-blue);width:58%;height:100%;border-radius:4px"></div></div>
+            </div>
+            <div style="margin-top:12px">
+                <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span>Decision Process</span><span>41%</span></div>
+                <div style="background:var(--bg-dark);border-radius:4px;height:8px"><div style="background:var(--accent-yellow);width:41%;height:100%;border-radius:4px"></div></div>
+            </div>
+            <div style="margin-top:12px">
+                <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span>Paper Process</span><span>35%</span></div>
+                <div style="background:var(--bg-dark);border-radius:4px;height:8px"><div style="background:var(--accent-red);width:35%;height:100%;border-radius:4px"></div></div>
+            </div>
+            <div style="margin-top:12px">
+                <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span>Identify Pain</span><span>72%</span></div>
+                <div style="background:var(--bg-dark);border-radius:4px;height:8px"><div style="background:var(--accent-green);width:72%;height:100%;border-radius:4px"></div></div>
+            </div>
+            <div style="margin-top:12px">
+                <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span>Champion</span><span>34%</span></div>
+                <div style="background:var(--bg-dark);border-radius:4px;height:8px"><div style="background:var(--accent-red);width:34%;height:100%;border-radius:4px"></div></div>
+            </div>
+            <div style="margin-top:12px">
+                <div style="display:flex;justify-content:space-between;margin-bottom:8px"><span>Competition</span><span>55%</span></div>
+                <div style="background:var(--bg-dark);border-radius:4px;height:8px"><div style="background:var(--accent-blue);width:55%;height:100%;border-radius:4px"></div></div>
+            </div>
+        </div>
+    `;
+}
+
+// Render Coaching
+function renderCoaching() {
+    document.getElementById('coaching-content').innerHTML = `
+        <div class="agent-card">
+            <h3>🎓 Coaching Queue</h3>
+            <p style="color:var(--text-secondary);margin:12px 0">Recent calls flagged for review</p>
+            <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+                <strong>Discovery Call - TechCorp</strong>
+                <p style="font-size:13px;color:var(--text-secondary)">Erik Ingle • 45 min • Yesterday</p>
+                <p style="font-size:12px;margin-top:8px">⚠️ Missed economic buyer identification</p>
+            </div>
+            <div style="margin-top:16px;padding-top:16px;border-top:1px solid var(--border)">
+                <strong>Demo - GlobalHealth</strong>
+                <p style="font-size:13px;color:var(--text-secondary)">Mike Jakubisin • 32 min • 2 days ago</p>
+                <p style="font-size:12px;margin-top:8px">✓ Strong pain identification</p>
+            </div>
+        </div>
+    `;
+}
+
+// Render Battlecards
 function renderBattlecards() {
     const competitors = [
         { name: "Twilio", winRate: 62, strengths: ["Brand recognition", "Developer docs"], weaknesses: ["Pricing 40% higher", "No dedicated support"], tactics: ["Lead with TCO analysis", "Highlight 24/7 support"] },
@@ -311,29 +330,143 @@ function renderBattlecards() {
         { name: "Plivo", winRate: 75, strengths: ["Low pricing"], weaknesses: ["Limited support", "Reliability issues"], tactics: ["Reference uptime SLA", "Enterprise case studies"] }
     ];
     
-    $("battlecards").innerHTML = competitors.map(c => `
+    document.getElementById('battlecards-content').innerHTML = competitors.map(c => `
         <div class="battlecard">
-            <div class="battlecard-header">
-                <div class="battlecard-name">${c.name}</div>
-                <div class="battlecard-win-rate">${c.winRate}% win</div>
+            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px">
+                <h3>${c.name}</h3>
+                <span style="color:var(--accent-green)">${c.winRate}% win rate</span>
             </div>
-            <div class="battlecard-section">
-                <div class="battlecard-section-title">Their Strengths</div>
-                <ul class="battlecard-list">${c.strengths.map(s => `<li>${s}</li>`).join("")}</ul>
+            <div style="margin-bottom:12px">
+                <div style="font-size:11px;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px">Their Strengths</div>
+                <ul style="font-size:13px;padding-left:16px">${c.strengths.map(s => `<li>${s}</li>`).join('')}</ul>
             </div>
-            <div class="battlecard-section">
-                <div class="battlecard-section-title">Their Weaknesses</div>
-                <ul class="battlecard-list">${c.weaknesses.map(w => `<li>${w}</li>`).join("")}</ul>
+            <div style="margin-bottom:12px">
+                <div style="font-size:11px;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px">Their Weaknesses</div>
+                <ul style="font-size:13px;padding-left:16px">${c.weaknesses.map(w => `<li>${w}</li>`).join('')}</ul>
             </div>
-            <div class="battlecard-section">
-                <div class="battlecard-section-title">Win Tactics</div>
-                <ul class="battlecard-list">${c.tactics.map(t => `<li>${t}</li>`).join("")}</ul>
+            <div>
+                <div style="font-size:11px;text-transform:uppercase;color:var(--text-muted);margin-bottom:6px">Win Tactics</div>
+                <ul style="font-size:13px;padding-left:16px">${c.tactics.map(t => `<li>${t}</li>`).join('')}</ul>
             </div>
         </div>
-    `).join("");
+    `).join('');
 }
 
-// Init
-document.addEventListener("DOMContentLoaded", load);
-window.filterDeals = filterDeals;
-window.setPriority = setPriority;
+// Render Scorecards
+function renderScorecards() {
+    const reps = data?.reps || [
+        { name: "Erik Ingle", team: "Foxtrot", winRate: 26.8, wins: 11, losses: 30, pipeline: 820000, avgDeal: 20000 },
+        { name: "Mike Jakubisin", team: "Alpha", winRate: 22.5, wins: 9, losses: 31, pipeline: 720000, avgDeal: 16000 },
+        { name: "Arielle Gelman", team: "Zulu", winRate: 28.1, wins: 9, losses: 23, pipeline: 510000, avgDeal: 16000 },
+        { name: "Lisa Park", team: "Alpha", winRate: 31.0, wins: 9, losses: 20, pipeline: 540000, avgDeal: 21000 },
+        { name: "Joseph Parker", team: "Zulu", winRate: 21.5, wins: 8, losses: 29, pipeline: 580000, avgDeal: 15000 },
+    ];
+    
+    document.getElementById('scorecards-content').innerHTML = `
+        <table>
+            <thead>
+                <tr>
+                    <th>Rep</th>
+                    <th>Team</th>
+                    <th>Win Rate</th>
+                    <th>W/L</th>
+                    <th>Pipeline</th>
+                    <th>Avg Deal</th>
+                </tr>
+            </thead>
+            <tbody>
+                ${reps.map(r => `
+                    <tr>
+                        <td><strong>${r.name}</strong></td>
+                        <td>${r.team}</td>
+                        <td style="color:${r.winRate >= 25 ? 'var(--accent-green)' : r.winRate >= 20 ? 'var(--accent-yellow)' : 'var(--accent-red)'}">${r.winRate}%</td>
+                        <td>${r.wins}/${r.losses}</td>
+                        <td>$${(r.pipeline/1000).toFixed(0)}K</td>
+                        <td>$${(r.avgDeal/1000).toFixed(0)}K</td>
+                    </tr>
+                `).join('')}
+            </tbody>
+        </table>
+    `;
+}
+
+// Render Weekly
+function renderWeekly() {
+    document.getElementById('weekly-content').innerHTML = `
+        <div class="agent-card">
+            <h3>📅 Weekly Summary</h3>
+            <p style="color:var(--text-secondary);margin:12px 0">Week of March 3, 2026</p>
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:16px;margin-top:20px">
+                <div style="text-align:center;padding:16px;background:var(--bg-dark);border-radius:8px">
+                    <div style="font-size:28px;font-weight:700;color:var(--accent-green)">$420K</div>
+                    <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">Closed Won</div>
+                </div>
+                <div style="text-align:center;padding:16px;background:var(--bg-dark);border-radius:8px">
+                    <div style="font-size:28px;font-weight:700;color:var(--accent-blue)">12</div>
+                    <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">Meetings Held</div>
+                </div>
+                <div style="text-align:center;padding:16px;background:var(--bg-dark);border-radius:8px">
+                    <div style="font-size:28px;font-weight:700;color:var(--accent-yellow)">5</div>
+                    <div style="font-size:12px;color:var(--text-secondary);margin-top:4px">Proposals Sent</div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+// Render Pipeline
+function renderPipeline() {
+    document.getElementById('pipeline-content').innerHTML = `
+        <div class="chart-container">
+            <h3>📊 Pipeline by Stage</h3>
+            <canvas id="stage-chart"></canvas>
+        </div>
+        <div class="chart-container">
+            <h3>💰 Pipeline by Team</h3>
+            <canvas id="team-chart"></canvas>
+        </div>
+    `;
+    
+    setTimeout(() => {
+        new Chart(document.getElementById('stage-chart'), {
+            type: 'bar',
+            data: {
+                labels: ['AE Qual', 'Discovery', 'Proposal', 'Testing', 'Ramp Up'],
+                datasets: [{
+                    label: 'Deals',
+                    data: [45, 62, 38, 28, 12],
+                    backgroundColor: '#3b82f6'
+                }]
+            },
+            options: {
+                indexAxis: 'y',
+                plugins: { legend: { display: false } },
+                scales: {
+                    x: { grid: { color: '#1e1f2a' }, ticks: { color: '#64748b' } },
+                    y: { grid: { display: false }, ticks: { color: '#64748b' } }
+                }
+            }
+        });
+        
+        new Chart(document.getElementById('team-chart'), {
+            type: 'doughnut',
+            data: {
+                labels: ['Zulu', 'Foxtrot', 'Alpha'],
+                datasets: [{
+                    data: [1800000, 1400000, 1000000],
+                    backgroundColor: ['#3b82f6', '#10b981', '#f59e0b']
+                }]
+            },
+            options: {
+                plugins: { legend: { position: 'bottom', labels: { color: '#94a3b8' } } }
+            }
+        });
+    }, 100);
+}
+
+// Expose functions globally
+window.showAddTask = showAddTask;
+window.closeModal = closeModal;
+window.saveTask = saveTask;
+window.completeTask = completeTask;
+window.dismissTask = dismissTask;
