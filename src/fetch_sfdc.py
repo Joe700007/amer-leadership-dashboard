@@ -128,7 +128,7 @@ def fetch_opportunities():
     query = f"""
         SELECT Id, Name, Owner.Name, Owner_Role__c, StageName, Amount,
                CloseDate, CreatedDate, Probability, IsClosed, IsWon,
-               Champion_Identified__c, Next_Step__c, LastActivityDate
+               Champion_Identified__c, NextStep, LastActivityDate
         FROM Opportunity
         WHERE ({team_filter})
         AND (IsClosed = false OR CloseDate >= LAST_N_DAYS:90)
@@ -190,7 +190,7 @@ def sync_opportunities(conn):
             1 if opp.get("IsClosed") else 0,
             1 if opp.get("IsWon") else 0,
             now,
-            opp.get("Next_Step__c"),
+            opp.get("NextStep"),
             opp.get("LastActivityDate"),
         ))
         synced += 1
