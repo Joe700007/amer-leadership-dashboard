@@ -7,26 +7,43 @@ let tasks = [];
 document.addEventListener('DOMContentLoaded', () => {
     loadData();
     setupTabs();
+    setupDragDrop();
     updateTime();
     setInterval(updateTime, 60000);
 });
 
+// Setup drag-drop zones
+function setupDragDrop() {
+    document.querySelectorAll('.task-list').forEach(col => {
+        col.addEventListener('dragover', allowDrop);
+        col.addEventListener('dragleave', dragLeave);
+        col.addEventListener('drop', drop);
+    });
+}
+
 // Load data
 async function loadData() {
+    // Load tasks first (small file, critical)
     try {
-        const [dataRes, tasksRes] = await Promise.all([
-            fetch('data.json'),
-            fetch('tasks.json')
-        ]);
-        data = await dataRes.json();
+        const tasksRes = await fetch('tasks.json');
         const tasksData = await tasksRes.json();
         tasks = tasksData.tasks || [];
-        renderAll();
+        console.log('Loaded tasks:', tasks.length);
     } catch(e) {
-        console.error('Error loading data:', e);
+        console.error('Error loading tasks:', e);
         tasks = [];
-        renderAll();
     }
+    
+    // Load pipeline data (larger, can fail gracefully)
+    try {
+        const dataRes = await fetch('data.json');
+        data = await dataRes.json();
+    } catch(e) {
+        console.error('Error loading data.json:', e);
+        data = null;
+    }
+    
+    renderAll();
 }
 
 // Setup tabs
@@ -77,11 +94,11 @@ function renderTasks() {
 function renderTaskCard(task) {
     const age = getAge(task.created);
     const initials = task.assignee ? task.assignee.split(' ').map(n => n[0]).join('').slice(0,2) : '?';
-    const tags = task.tags.map(t => `<span class="task-tag tag-${t.toLowerCase()}">${t}</span>`).join('');
+    const tags = (task.tags || []).map(t => `<span class="task-tag tag-${t.toLowerCase()}">${t}</span>`).join('');
     
     return `
-        <div class="task-card" data-id="${task.id}">
-            <div class="task-title">${task.title}</div>
+        <div class="task-card" data-id="${task.id}" draggable="true" ondragstart="dragStart(event)" ondragend="dragEnd(event)">
+            <div class="task-title" contenteditable="true" onblur="updateTaskTitle('${task.id}', this.innerText)" onkeydown="if(event.key==='Enter'){event.preventDefault();this.blur();}">${task.title}</div>
             <div class="task-meta">
                 <span class="task-tag impact-${task.impact}">${task.impact} Impact</span>
                 ${tags}
@@ -130,6 +147,63 @@ function dismissTask(id) {
     const task = tasks.find(t => t.id === id);
     if (task) {
         task.status = 'dismissed';
+        renderTasks();
+        saveData();
+    }
+}
+
+// Update task title (inline edit)
+function updateTaskTitle(id, newTitle) {
+    const task = tasks.find(t => t.id === id);
+    if (task && newTitle.trim()) {
+        task.title = newTitle.trim();
+        saveData();
+    }
+}
+
+// Drag and Drop
+let draggedTask = null;
+
+function dragStart(e) {
+    draggedTask = e.target.closest('.task-card');
+    draggedTask.classList.add('dragging');
+    e.dataTransfer.effectAllowed = 'move';
+    e.dataTransfer.setData('text/plain', draggedTask.dataset.id);
+}
+
+function dragEnd(e) {
+    if (draggedTask) {
+        draggedTask.classList.remove('dragging');
+        draggedTask = null;
+    }
+    document.querySelectorAll('.task-list').forEach(col => col.classList.remove('drag-over'));
+}
+
+function allowDrop(e) {
+    e.preventDefault();
+    e.currentTarget.classList.add('drag-over');
+}
+
+function dragLeave(e) {
+    e.currentTarget.classList.remove('drag-over');
+}
+
+function drop(e) {
+    e.preventDefault();
+    const column = e.currentTarget;
+    column.classList.remove('drag-over');
+    
+    const taskId = e.dataTransfer.getData('text/plain');
+    const task = tasks.find(t => t.id === taskId || t.id == taskId);
+    
+    if (task) {
+        // Get new priority from column id
+        const columnId = column.id;
+        if (columnId === 'p1-tasks') task.priority = 'p1';
+        else if (columnId === 'p2-tasks') task.priority = 'p2';
+        else if (columnId === 'p3-tasks') task.priority = 'p3';
+        else if (columnId === 'completed-tasks') task.status = 'completed';
+        
         renderTasks();
         saveData();
     }
