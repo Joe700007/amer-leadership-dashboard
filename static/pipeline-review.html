@@ -336,15 +336,17 @@
             const priority = [...cats.close, ...cats.push].slice(0, 15);
             document.getElementById('deals-table').innerHTML = priority.map(d => {
                 const icon = d.category === 'close' ? '🎯' : '🚀';
-                const icpClass = d.meddic_score >= 70 ? 'icp-high' : d.meddic_score >= 50 ? 'icp-med' : d.meddic_score >= 35 ? 'icp-low' : 'icp-poor';
+                const icp = d.icp_score || d.meddic_score || 0;
+                const icpClass = icp >= 70 ? 'icp-high' : icp >= 50 ? 'icp-med' : icp >= 35 ? 'icp-low' : 'icp-poor';
                 const reasoning = getReasoning(d);
+                const age = d.age_days || 0;
                 return `<tr>
                     <td class="deal-icon">${icon}</td>
                     <td class="deal-name">${d.name.split(':')[0]}</td>
                     <td class="rep-name">${d.owner || '-'}</td>
                     <td class="value">$${(d.amount/1000).toFixed(0)},000</td>
                     <td class="mmc">${d.has_champion ? '$'+(d.amount/1000).toFixed(0)+',000' : '—'}</td>
-                    <td><div class="icp-score ${icpClass}">${Math.round(d.meddic_score)}</div></td>
+                    <td><div class="icp-score ${icpClass}">${Math.round(icp)}</div></td>
                     <td class="stage"><span class="stage-num">${getStageNum(d.stage)}:</span> ${getStageShort(d.stage)}</td>
                     <td class="reasoning">${reasoning}</td>
                 </tr>`;
@@ -355,10 +357,11 @@
         }
 
         function categorize(d) {
-            if (d.stage?.includes('Testing') && d.meddic_score >= 50) return 'close';
-            if (d.meddic_score >= 60) return 'push';
-            if (d.meddic_score < 30) return 'lose';
-            if (d.meddic_score < 50) return 'checkpoint';
+            const icp = d.icp_score || d.meddic_score || 0;
+            if (d.stage?.includes('Testing') && icp >= 45) return 'close';
+            if (icp >= 55) return 'push';
+            if (icp < 25) return 'lose';
+            if (icp < 45) return 'checkpoint';
             return 'monitor';
         }
 
@@ -384,17 +387,16 @@
         function getReasoning(d) {
             const stage = d.stage || '';
             const stageNum = getStageNum(stage);
-            const icp = d.meddic_score || 0;
+            const icp = d.icp_score || d.meddic_score || 0;
             const amount = d.amount || 0;
             const amountK = (amount / 1000).toFixed(0);
             const nextStep = d.next_step || '';
-            const createdDate = d.created_date ? new Date(d.created_date) : null;
-            const ageInDays = createdDate ? Math.floor((Date.now() - createdDate.getTime()) / 86400000) : 0;
+            const ageInDays = d.age_days || 0;
             const lastActivity = d.last_activity_date ? new Date(d.last_activity_date) : null;
             const daysSinceActivity = lastActivity ? Math.floor((Date.now() - lastActivity.getTime()) / 86400000) : null;
 
             // 1. Late stage (Testing/Negotiation) with decent ICP → focus on closing
-            if (stage.includes('Testing') && icp >= 50) {
+            if (stage.includes('Testing') && icp >= 45) {
                 return 'Late stage — focus on closing';
             }
 
@@ -404,7 +406,7 @@
             }
 
             // 3. Stalled indicator from next_step field (contains date or waiting language)
-            if (nextStep && (nextStep.match(/\d{1,2}\/\d{1,2}/) || nextStep.toLowerCase().includes('waiting') || nextStep.toLowerCase().includes('holding'))) {
+            if (nextStep && (nextStep.match(/\d{1,2}\/\d{1,2}/) || nextStep.toLowerCase().includes('waiting') || nextStep.toLowerCase().includes('holding') || nextStep.toLowerCase().includes('dark'))) {
                 const truncated = nextStep.length > 60 ? nextStep.substring(0, 57) + '...' : nextStep;
                 return `Stalled indicator in next step: "${truncated}"`;
             }
@@ -420,17 +422,17 @@
             }
 
             // 6. No activity in 30+ days
-            if (daysSinceActivity !== null && daysSinceActivity > 30 && icp < 60) {
+            if (daysSinceActivity !== null && daysSinceActivity > 30 && icp < 55) {
                 return `${daysSinceActivity} days since last activity — needs attention`;
             }
 
             // 7. Strong ICP fit
-            if (icp >= 60) {
+            if (icp >= 55) {
                 return `ICP score ${Math.round(icp)}/100 — strong fit, worth investing time`;
             }
 
             // 8. Low ICP → checkpoint needed
-            if (icp < 40) {
+            if (icp < 35) {
                 return `ICP score ${Math.round(icp)}/100 — needs qualification checkpoint`;
             }
 
@@ -442,14 +444,14 @@
         function renderLosses(cats) {
             const losses = cats.lose.slice(0, 10);
             document.getElementById('losses-table').innerHTML = losses.length ? losses.map(d => {
-                const createdDate = d.created_date ? new Date(d.created_date) : null;
-                const ageInDays = createdDate ? Math.floor((Date.now() - createdDate.getTime()) / 86400000) : 0;
+                const ageInDays = d.age_days || 0;
+                const icp = d.icp_score || d.meddic_score || 0;
                 const reason = getLossReasoning(d, ageInDays);
                 return `<tr>
                     <td class="deal-name">${d.name.split(':')[0]}</td>
                     <td class="rep-name">${d.owner || '-'}</td>
                     <td class="value">$${(d.amount/1000).toFixed(0)}K</td>
-                    <td><div class="icp-score icp-poor">${Math.round(d.meddic_score)}</div></td>
+                    <td><div class="icp-score icp-poor">${Math.round(icp)}</div></td>
                     <td>${ageInDays}d</td>
                     <td class="reasoning">${reason}</td>
                 </tr>`;
@@ -461,7 +463,7 @@
         }
 
         function getLossReasoning(d, ageInDays) {
-            const icp = d.meddic_score || 0;
+            const icp = d.icp_score || d.meddic_score || 0;
             const stageNum = getStageNum(d.stage);
             const nextStep = d.next_step || '';
             
@@ -481,7 +483,7 @@
             }
             
             // Stalled with low ICP
-            if (nextStep && nextStep.toLowerCase().includes('waiting') && icp < 35) {
+            if (nextStep && (nextStep.toLowerCase().includes('waiting') || nextStep.toLowerCase().includes('dark')) && icp < 35) {
                 return `Stalled on customer action with weak ICP — recommend closing`;
             }
             

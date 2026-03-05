@@ -67,7 +67,8 @@ def init_db():
             is_won INTEGER,
             last_updated TEXT,
             next_step TEXT,
-            last_activity_date TEXT
+            last_activity_date TEXT,
+            firmo_score REAL
         )
     """)
     
@@ -128,7 +129,8 @@ def fetch_opportunities():
     query = f"""
         SELECT Id, Name, Owner.Name, Owner_Role__c, StageName, Amount,
                CloseDate, CreatedDate, Probability, IsClosed, IsWon,
-               Champion_Identified__c, NextStep, LastActivityDate
+               Champion_Identified__c, NextStep, LastActivityDate,
+               Account.firmoScoreTotalFormula__c
         FROM Opportunity
         WHERE ({team_filter})
         AND (IsClosed = false OR CloseDate >= LAST_N_DAYS:90)
@@ -165,9 +167,13 @@ def sync_opportunities(conn):
         team = extract_team(opp.get("Owner_Role__c"))
         meddic = calculate_meddic_score(opp)
         
+        # Extract firmo score from Account
+        account = opp.get("Account") or {}
+        firmo = account.get("firmoScoreTotalFormula__c") or 0
+        
         c.execute("""
             INSERT OR REPLACE INTO opportunities VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )
         """, (
             opp.get("Id"),
@@ -192,6 +198,7 @@ def sync_opportunities(conn):
             now,
             opp.get("NextStep"),
             opp.get("LastActivityDate"),
+            firmo,
         ))
         synced += 1
     
@@ -308,21 +315,52 @@ def generate_dashboard_data(conn):
     
     # Build deal list helper
     def deals_to_list(rows):
-        return [{
-            "id": r[0],
-            "name": r[1],
-            "owner": r[2],
-            "owner_role": r[3],
-            "team": r[4],
-            "stage": r[5],
-            "amount": r[7],
-            "close_date": r[8],
-            "created_date": r[9],
-            "meddic_score": round(r[11] or 0, 1),
-            "has_champion": bool(r[12]),
-            "next_step": r[20] if len(r) > 20 else None,
-            "last_activity_date": r[21] if len(r) > 21 else None,
-        } for r in rows]
+        today = datetime.now()
+        result = []
+        for r in rows:
+            created = r[9]
+            age_days = 0
+            if created:
+                try:
+                    created_dt = datetime.fromisoformat(created.replace('+0000', '+00:00').replace('Z', '+00:00'))
+                    age_days = (today - created_dt.replace(tzinfo=None)).days
+                except:
+                    pass
+            
+            # Get firmo score and has_champion
+            firmo = r[22] if len(r) > 22 else 0
+            has_champ = bool(r[12])
+            stage = r[5] or ""
+            
+            # Calculate composite ICP: firmo base + champion bonus + stage bonus
+            icp = firmo or 0
+            if has_champ:
+                icp += 15  # Champion bonus
+            if "Testing" in stage or "Negotiation" in stage:
+                icp += 10  # Late stage bonus
+            elif "Proposal" in stage:
+                icp += 5   # Mid stage bonus
+            icp = min(100, max(0, icp))  # Clamp 0-100
+            
+            result.append({
+                "id": r[0],
+                "name": r[1],
+                "owner": r[2],
+                "owner_role": r[3],
+                "team": r[4],
+                "stage": r[5],
+                "amount": r[7],
+                "close_date": r[8],
+                "created_date": r[9],
+                "age_days": age_days,
+                "firmo_score": firmo or 0,
+                "icp_score": round(icp, 0),
+                "meddic_score": round(r[11] or 0, 1),
+                "has_champion": has_champ,
+                "next_step": r[20] if len(r) > 20 else None,
+                "last_activity_date": r[21] if len(r) > 21 else None,
+            })
+        return result
     
     # Last sync
     c.execute("SELECT sync_time FROM sync_log ORDER BY id DESC LIMIT 1")
