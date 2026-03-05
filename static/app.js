@@ -20,32 +20,13 @@ async function loadData() {
         ]);
         data = await dataRes.json();
         const tasksData = await tasksRes.json();
-        tasks = tasksData.tasks || generateSampleTasks();
+        tasks = tasksData.tasks || [];
         renderAll();
     } catch(e) {
         console.error('Error loading data:', e);
-        tasks = generateSampleTasks();
+        tasks = [];
         renderAll();
     }
-}
-
-// Generate sample tasks
-function generateSampleTasks() {
-    return [
-        { id: 1, title: "Register Xander A2A agent card with company-wide agent discovery registry", desc: "Ask in #help-ai-swe about A2A agent registry process", priority: "p1", impact: "M", assignee: "Sean McBrien", tags: ["ops"], created: Date.now() - 86400000, status: "open" },
-        { id: 2, title: "Inbound Form Fills - What did Qwen drop + Inbound Emails", desc: "", priority: "p1", impact: "M", assignee: "Joe", tags: ["ops"], created: Date.now() - 86400000 * 14, status: "open" },
-        { id: 3, title: "Apollo.io evaluation for sales intel", desc: "5-10x cheaper than Cognism, better API for bots", priority: "p1", impact: "S", assignee: "Sean", tags: ["tools"], created: Date.now() - 86400000 * 28, status: "open" },
-        { id: 4, title: "test", desc: "", priority: "p2", impact: "M", assignee: "", tags: [], created: Date.now() - 86400000, status: "open" },
-        { id: 5, title: "web-form", desc: "", priority: "p2", impact: "M", assignee: "Sean", tags: ["build"], created: Date.now() - 86400000 * 3, status: "open" },
-        { id: 6, title: "Post Meeting Feedback - Stage Specific", desc: "", priority: "p2", impact: "M", assignee: "Sean", tags: ["build"], created: Date.now() - 86400000 * 3, status: "open" },
-        { id: 7, title: "New Agent - Take the feedback from coaching hub, best calls only, build a library to keep for training", desc: "", priority: "p2", impact: "M", assignee: "", tags: [], created: Date.now() - 86400000 * 20, status: "open" },
-        { id: 8, title: "Verify log rotation script is scheduled in cron", desc: "rotate-logs.sh created at ~/clawd/scripts/rotate-logs.sh during security remediation", priority: "p3", impact: "S", assignee: "Sean McBrien", tags: ["ops"], created: Date.now() - 86400000 * 18, status: "open" },
-        { id: 9, title: "Forecast Model: Replace +/-15% range with historical error band", desc: "The Predictive Forecast realistic range is an arbitrary +/-15% band. Once we have 3-4 months of forecast snapshots, compute actual median absolute prediction error and use that as the confidence band.", priority: "p3", impact: "M", assignee: "xander", tags: ["AI", "tools"], created: Date.now() - 86400000 * 3, status: "open" },
-        { id: 10, title: "Forecast Model: Unify scoring into shared module", desc: "", priority: "p3", impact: "M", assignee: "xander", tags: ["AI", "tools"], created: Date.now() - 86400000 * 3, status: "open" },
-        { id: 11, title: "Clay access", desc: "Sync with Niamh", priority: "p4", impact: "M", assignee: "Xander/Sean", tags: ["tools"], created: Date.now() - 86400000 * 30, status: "open" },
-        { id: 12, title: "Monday.com eval", desc: "In progress - Stephen Malio leading", priority: "p4", impact: "M", assignee: "Xander/Sean", tags: ["tools"], created: Date.now() - 86400000 * 30, status: "open" },
-        { id: 13, title: "Rippling birthday/anniversary alerts", desc: "Blocked on browser relay setup", priority: "p4", impact: "L", assignee: "Xander", tags: ["Team Morale"], created: Date.now() - 86400000 * 30, status: "open" },
-    ];
 }
 
 // Setup tabs
