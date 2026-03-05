@@ -57,6 +57,11 @@
         .stage { font-size:13px; }
         .stage-num { color:var(--muted); }
         .reasoning { color:var(--muted); font-size:13px; max-width:300px; }
+        .age { font-weight:500; }
+        .age-fresh { color:var(--green); }
+        .age-normal { color:var(--blue); }
+        .age-stale { color:var(--yellow); }
+        .age-old { color:var(--red); }
         
         .back-link { display:inline-block; margin-bottom:24px; color:var(--blue); text-decoration:none; font-size:14px; }
     </style>
@@ -108,6 +113,7 @@
                     <th>Value</th>
                     <th>MMC</th>
                     <th>ICP</th>
+                    <th>Age</th>
                     <th>Stage</th>
                     <th>Reasoning</th>
                 </tr>
@@ -347,6 +353,7 @@
                     <td class="value">$${(d.amount/1000).toFixed(0)},000</td>
                     <td class="mmc">${d.has_champion ? '$'+(d.amount/1000).toFixed(0)+',000' : '—'}</td>
                     <td><div class="icp-score ${icpClass}">${Math.round(icp)}</div></td>
+                    <td class="age ${age < 60 ? 'age-fresh' : age < 120 ? 'age-normal' : age < 180 ? 'age-stale' : 'age-old'}">${age}d</td>
                     <td class="stage"><span class="stage-num">${getStageNum(d.stage)}:</span> ${getStageShort(d.stage)}</td>
                     <td class="reasoning">${reasoning}</td>
                 </tr>`;
