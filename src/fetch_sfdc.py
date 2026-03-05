@@ -16,20 +16,26 @@ DATA_DIR = BASE_DIR / "data"
 DB_PATH = DATA_DIR / "dashboard.db"
 STATIC_DIR = BASE_DIR / "static"
 
-# SFDC Config
-SF_ORG = "joer@telnyx.com"
+# SFDC Config - use default authenticated org
+SF_ORG = None  # Will use default org
 AMER_TEAMS = ["Zulu", "Foxtrot", "Alpha"]
 
 
 def run_soql(query: str) -> list:
     """Execute SOQL query via sf CLI."""
-    cmd = ["sf", "data", "query", "-o", SF_ORG, "-q", query, "--json"]
+    cmd = ["sf", "data", "query", "-q", query, "--json"]
+    if SF_ORG:
+        cmd.extend(["-o", SF_ORG])
     result = subprocess.run(cmd, capture_output=True, text=True)
     if result.returncode != 0:
         print(f"SOQL Error: {result.stderr}")
         return []
-    data = json.loads(result.stdout)
-    return data.get("result", {}).get("records", [])
+    try:
+        data = json.loads(result.stdout)
+        return data.get("result", {}).get("records", [])
+    except json.JSONDecodeError:
+        print(f"JSON Error: {result.stdout[:500]}")
+        return []
 
 
 def init_db():
