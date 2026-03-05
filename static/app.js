@@ -76,20 +76,20 @@ function renderAll() {
 // Render tasks
 function renderTasks() {
     const openTasks = tasks.filter(t => t.status === 'open');
+    const completedTasks = tasks.filter(t => t.status === 'completed');
     const p1 = openTasks.filter(t => t.priority === 'p1');
     const p2 = openTasks.filter(t => t.priority === 'p2');
     const p3 = openTasks.filter(t => t.priority === 'p3');
-    const p4 = openTasks.filter(t => t.priority === 'p4');
 
     document.getElementById('p1-count').textContent = p1.length;
     document.getElementById('p2-count').textContent = p2.length;
     document.getElementById('p3-count').textContent = p3.length;
-    document.getElementById('p4-count').textContent = p4.length;
+    document.getElementById('p4-count').textContent = completedTasks.length;
 
     document.getElementById('p1-tasks').innerHTML = p1.map(renderTaskCard).join('');
     document.getElementById('p2-tasks').innerHTML = p2.map(renderTaskCard).join('');
     document.getElementById('p3-tasks').innerHTML = p3.map(renderTaskCard).join('');
-    document.getElementById('p4-tasks').innerHTML = p4.map(renderTaskCard).join('');
+    document.getElementById('completed-tasks').innerHTML = completedTasks.map(renderTaskCard).join('');
 }
 
 // Render task card
