@@ -1,0 +1,15 @@
+{
+  "tasks": [
+    {
+      "id": "task-001",
+      "title": "Taskforce: BPO AI Transition",
+      "description": "BPO AI transition initiative",
+      "priority": "p1",
+      "impact": "L",
+      "status": "open",
+      "assignee": "@joe",
+      "tags": ["taskforce", "ai", "bpo"],
+      "created": "2026-03-05T15:44:00Z"
+    }
+  ]
+}
