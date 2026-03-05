@@ -382,10 +382,59 @@
         }
 
         function getReasoning(d) {
-            if (d.stage?.includes('Testing') && d.meddic_score >= 60) return 'Late stage — focus on closing';
-            if (d.meddic_score >= 70) return `ICP score ${Math.round(d.meddic_score)}/100 — strong fit, worth investing time`;
-            if (d.has_champion) return `$${(d.amount/1000).toFixed(0)}K MMC — high quota impact if closed`;
-            if (d.meddic_score < 40) return 'Stalled indicator — needs attention';
+            const stage = d.stage || '';
+            const stageNum = getStageNum(stage);
+            const icp = d.meddic_score || 0;
+            const amount = d.amount || 0;
+            const amountK = (amount / 1000).toFixed(0);
+            const nextStep = d.next_step || '';
+            const createdDate = d.created_date ? new Date(d.created_date) : null;
+            const ageInDays = createdDate ? Math.floor((Date.now() - createdDate.getTime()) / 86400000) : 0;
+            const lastActivity = d.last_activity_date ? new Date(d.last_activity_date) : null;
+            const daysSinceActivity = lastActivity ? Math.floor((Date.now() - lastActivity.getTime()) / 86400000) : null;
+
+            // 1. Late stage (Testing/Negotiation) with decent ICP → focus on closing
+            if (stage.includes('Testing') && icp >= 50) {
+                return 'Late stage — focus on closing';
+            }
+
+            // 2. Has champion with good amount → MMC impact
+            if (d.has_champion && amount >= 40000) {
+                return `$${amountK},000 MMC — high quota impact if closed`;
+            }
+
+            // 3. Stalled indicator from next_step field (contains date or waiting language)
+            if (nextStep && (nextStep.match(/\d{1,2}\/\d{1,2}/) || nextStep.toLowerCase().includes('waiting') || nextStep.toLowerCase().includes('holding'))) {
+                const truncated = nextStep.length > 60 ? nextStep.substring(0, 57) + '...' : nextStep;
+                return `Stalled indicator in next step: "${truncated}"`;
+            }
+
+            // 4. Old deal in early stage (Discovery or earlier, >120 days old)
+            if (stageNum <= 1 && ageInDays > 120) {
+                return `${ageInDays} days in early stage — should be further along or killed`;
+            }
+
+            // 5. Old deal stuck at Proposal stage (>150 days)
+            if (stageNum === 2 && ageInDays > 150) {
+                return `${ageInDays} days old at ${stageNum}: ${getStageShort(stage)} — needs checkpoint or close`;
+            }
+
+            // 6. No activity in 30+ days
+            if (daysSinceActivity !== null && daysSinceActivity > 30 && icp < 60) {
+                return `${daysSinceActivity} days since last activity — needs attention`;
+            }
+
+            // 7. Strong ICP fit
+            if (icp >= 60) {
+                return `ICP score ${Math.round(icp)}/100 — strong fit, worth investing time`;
+            }
+
+            // 8. Low ICP → checkpoint needed
+            if (icp < 40) {
+                return `ICP score ${Math.round(icp)}/100 — needs qualification checkpoint`;
+            }
+
+            // Default
             return 'Review next steps';
         }
 
@@ -393,20 +442,51 @@
         function renderLosses(cats) {
             const losses = cats.lose.slice(0, 10);
             document.getElementById('losses-table').innerHTML = losses.length ? losses.map(d => {
-                const age = Math.floor((Date.now() - new Date(d.close_date || Date.now()).getTime()) / 86400000);
+                const createdDate = d.created_date ? new Date(d.created_date) : null;
+                const ageInDays = createdDate ? Math.floor((Date.now() - createdDate.getTime()) / 86400000) : 0;
+                const reason = getLossReasoning(d, ageInDays);
                 return `<tr>
                     <td class="deal-name">${d.name.split(':')[0]}</td>
                     <td class="rep-name">${d.owner || '-'}</td>
                     <td class="value">$${(d.amount/1000).toFixed(0)}K</td>
                     <td><div class="icp-score icp-poor">${Math.round(d.meddic_score)}</div></td>
-                    <td>${age}d</td>
-                    <td class="reasoning">ICP score ${Math.round(d.meddic_score)}/100 — poor fit for Telnyx sweet spot</td>
+                    <td>${ageInDays}d</td>
+                    <td class="reasoning">${reason}</td>
                 </tr>`;
             }).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">No deals recommended for closure</td></tr>';
             const total = losses.reduce((a,d) => a + (d.amount||0), 0);
             document.getElementById('losses-summary').textContent = losses.length ? 
                 `${losses.length} deals · $${(total/1000).toFixed(0)}K pipeline recommended to close` :
                 'Pipeline looks healthy for current filter';
+        }
+
+        function getLossReasoning(d, ageInDays) {
+            const icp = d.meddic_score || 0;
+            const stageNum = getStageNum(d.stage);
+            const nextStep = d.next_step || '';
+            
+            // Very old deal
+            if (ageInDays > 200) {
+                return `${ageInDays} days old — deal velocity indicates no real engagement`;
+            }
+            
+            // Early stage + old + low ICP
+            if (stageNum <= 1 && ageInDays > 90 && icp < 30) {
+                return `Stuck in early stage for ${ageInDays} days with ICP ${Math.round(icp)} — unlikely to convert`;
+            }
+            
+            // No champion + low ICP
+            if (!d.has_champion && icp < 25) {
+                return `No champion identified, ICP ${Math.round(icp)}/100 — poor fit for Telnyx sweet spot`;
+            }
+            
+            // Stalled with low ICP
+            if (nextStep && nextStep.toLowerCase().includes('waiting') && icp < 35) {
+                return `Stalled on customer action with weak ICP — recommend closing`;
+            }
+            
+            // Default: low ICP
+            return `ICP score ${Math.round(icp)}/100 — poor fit, free up rep capacity`;
         }
 
         // Render per-rep cards

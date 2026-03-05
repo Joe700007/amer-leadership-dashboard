@@ -65,7 +65,9 @@ def init_db():
             has_identify_pain INTEGER,
             is_closed INTEGER,
             is_won INTEGER,
-            last_updated TEXT
+            last_updated TEXT,
+            next_step TEXT,
+            last_activity_date TEXT
         )
     """)
     
@@ -126,7 +128,7 @@ def fetch_opportunities():
     query = f"""
         SELECT Id, Name, Owner.Name, Owner_Role__c, StageName, Amount,
                CloseDate, CreatedDate, Probability, IsClosed, IsWon,
-               Champion_Identified__c
+               Champion_Identified__c, Next_Step__c, LastActivityDate
         FROM Opportunity
         WHERE ({team_filter})
         AND (IsClosed = false OR CloseDate >= LAST_N_DAYS:90)
@@ -165,7 +167,7 @@ def sync_opportunities(conn):
         
         c.execute("""
             INSERT OR REPLACE INTO opportunities VALUES (
-                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
+                ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?
             )
         """, (
             opp.get("Id"),
@@ -188,6 +190,8 @@ def sync_opportunities(conn):
             1 if opp.get("IsClosed") else 0,
             1 if opp.get("IsWon") else 0,
             now,
+            opp.get("Next_Step__c"),
+            opp.get("LastActivityDate"),
         ))
         synced += 1
     
@@ -308,12 +312,16 @@ def generate_dashboard_data(conn):
             "id": r[0],
             "name": r[1],
             "owner": r[2],
+            "owner_role": r[3],
             "team": r[4],
             "stage": r[5],
             "amount": r[7],
             "close_date": r[8],
+            "created_date": r[9],
             "meddic_score": round(r[11] or 0, 1),
             "has_champion": bool(r[12]),
+            "next_step": r[20] if len(r) > 20 else None,
+            "last_activity_date": r[21] if len(r) > 21 else None,
         } for r in rows]
     
     # Last sync
