@@ -131,6 +131,30 @@
         <!-- Per-Rep Pipeline -->
         <div style="margin-top:40px">
             <div class="section-header">📁 Per-Rep Pipeline</div>
+            
+            <!-- Filter Row -->
+            <div style="display:flex;gap:16px;align-items:center;margin:16px 0;flex-wrap:wrap">
+                <!-- Team Filter -->
+                <div style="display:flex;align-items:center;gap:8px">
+                    <label style="color:var(--muted);font-size:13px">Team:</label>
+                    <select id="team-filter" class="filter-select">
+                        <option value="all">All Teams</option>
+                        <option value="Zulu">Zulu</option>
+                        <option value="Foxtrot">Foxtrot</option>
+                        <option value="Alpha">Alpha</option>
+                    </select>
+                </div>
+                
+                <!-- AE Filter -->
+                <div style="display:flex;align-items:center;gap:8px">
+                    <label style="color:var(--muted);font-size:13px">AE:</label>
+                    <select id="ae-filter" class="filter-select">
+                        <option value="all">All AEs</option>
+                    </select>
+                </div>
+            </div>
+            
+            <!-- Category Filter Buttons -->
             <div style="display:flex;gap:8px;margin:16px 0" id="rep-filters">
                 <button class="filter-btn active" data-filter="all">All</button>
                 <button class="filter-btn" data-filter="close">🎯 Close</button>
@@ -147,45 +171,152 @@
         .filter-btn { padding:8px 16px; border-radius:20px; border:1px solid var(--border); background:var(--card); color:var(--muted); font-size:13px; cursor:pointer; }
         .filter-btn.active { background:var(--blue); color:white; border-color:var(--blue); }
         .filter-btn:hover { border-color:var(--blue); }
-        .rep-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; }
+        .filter-select { padding:8px 12px; border-radius:8px; border:1px solid var(--border); background:var(--card); color:var(--text); font-size:13px; cursor:pointer; min-width:140px; }
+        .filter-select:focus { outline:none; border-color:var(--blue); }
+        .rep-card { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:20px; margin-bottom:12px; display:flex; justify-content:space-between; align-items:center; cursor:pointer; transition:border-color 0.15s; }
+        .rep-card:hover { border-color:var(--blue); }
         .rep-name-big { font-size:16px; font-weight:600; }
         .rep-bar { display:flex; height:8px; width:200px; border-radius:4px; overflow:hidden; margin-top:8px; }
         .rep-pipeline { font-size:18px; font-weight:600; color:var(--green); }
     </style>
 
     <script>
+        // Global state
+        let allDeals = [];
+        let currentFilters = { team: 'all', ae: 'all', category: 'all' };
+
         async function load() {
             const res = await fetch('data.json');
             const data = await res.json();
-            render(data);
+            
+            // Flatten all deals
+            allDeals = [];
+            Object.values(data.priority_queues).forEach(q => allDeals.push(...q.deals));
+            
+            // Add category to each deal
+            allDeals.forEach(d => d.category = categorize(d));
+            
+            // Populate AE dropdown
+            populateAEDropdown();
+            
+            // Initial render
+            renderAll();
+            
+            // Setup filter listeners
+            setupFilters();
         }
 
-        function render(data) {
+        function populateAEDropdown() {
+            const aes = [...new Set(allDeals.map(d => d.owner).filter(Boolean))].sort();
+            const select = document.getElementById('ae-filter');
+            select.innerHTML = '<option value="all">All AEs</option>' + 
+                aes.map(ae => `<option value="${ae}">${ae}</option>`).join('');
+        }
+
+        function setupFilters() {
+            // Team filter
+            document.getElementById('team-filter').addEventListener('change', e => {
+                currentFilters.team = e.target.value;
+                // Reset AE filter when team changes
+                if (currentFilters.team !== 'all') {
+                    updateAEDropdownForTeam(currentFilters.team);
+                } else {
+                    populateAEDropdown();
+                }
+                currentFilters.ae = 'all';
+                document.getElementById('ae-filter').value = 'all';
+                renderAll();
+            });
+
+            // AE filter
+            document.getElementById('ae-filter').addEventListener('change', e => {
+                currentFilters.ae = e.target.value;
+                renderAll();
+            });
+
+            // Category filter buttons
+            document.getElementById('rep-filters').addEventListener('click', e => {
+                if (e.target.classList.contains('filter-btn')) {
+                    document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+                    e.target.classList.add('active');
+                    currentFilters.category = e.target.dataset.filter;
+                    renderAll();
+                }
+            });
+        }
+
+        function updateAEDropdownForTeam(team) {
+            const teamDeals = allDeals.filter(d => getTeam(d) === team);
+            const aes = [...new Set(teamDeals.map(d => d.owner).filter(Boolean))].sort();
+            const select = document.getElementById('ae-filter');
+            select.innerHTML = '<option value="all">All AEs</option>' + 
+                aes.map(ae => `<option value="${ae}">${ae}</option>`).join('');
+        }
+
+        function getTeam(d) {
+            // Extract team from owner_role (e.g., "AE Team - Zulu" → "Zulu")
+            if (d.owner_role) {
+                if (d.owner_role.includes('Zulu')) return 'Zulu';
+                if (d.owner_role.includes('Foxtrot')) return 'Foxtrot';
+                if (d.owner_role.includes('Alpha')) return 'Alpha';
+            }
+            // Fallback: assign based on owner name hash for demo
+            if (d.owner) {
+                const hash = d.owner.charCodeAt(0) % 3;
+                return ['Zulu', 'Foxtrot', 'Alpha'][hash];
+            }
+            return 'Unknown';
+        }
+
+        function getFilteredDeals() {
+            return allDeals.filter(d => {
+                // Team filter
+                if (currentFilters.team !== 'all' && getTeam(d) !== currentFilters.team) return false;
+                // AE filter
+                if (currentFilters.ae !== 'all' && d.owner !== currentFilters.ae) return false;
+                // Category filter
+                if (currentFilters.category !== 'all' && d.category !== currentFilters.category) return false;
+                return true;
+            });
+        }
+
+        function renderAll() {
+            const deals = getFilteredDeals();
             const now = new Date();
+            
+            // Update header
             document.getElementById('review-date').textContent = now.toISOString().split('T')[0];
             document.getElementById('gen-time').textContent = now.toLocaleString('en-US', {month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true}) + ' ET';
+            
+            // Update team name in header
+            let teamLabel = 'All AMER';
+            if (currentFilters.team !== 'all') teamLabel = currentFilters.team;
+            if (currentFilters.ae !== 'all') teamLabel = currentFilters.ae;
+            document.getElementById('team-name').textContent = teamLabel;
 
-            let deals = [];
-            Object.values(data.priority_queues).forEach(q => deals.push(...q.deals));
-
+            // Metrics
             const total = deals.length;
             const pipeline = deals.reduce((a,d) => a + (d.amount||0), 0);
             const reps = [...new Set(deals.map(d => d.owner))].length;
 
             document.getElementById('total-opps').textContent = total;
-            document.getElementById('total-pipeline').textContent = '$' + (pipeline/1000000).toFixed(1) + 'M';
+            document.getElementById('total-pipeline').textContent = '$' + (pipeline >= 1000000 ? (pipeline/1000000).toFixed(1) + 'M' : (pipeline/1000).toFixed(0) + 'K');
             document.getElementById('total-mmc').textContent = '$' + (pipeline/1000).toFixed(0) + 'K';
             document.getElementById('reps-count').textContent = reps;
 
-            // Categorize
-            const cats = {close:[], push:[], checkpoint:[], lose:[], monitor:[]};
-            deals.forEach(d => {
-                const cat = categorize(d);
-                cats[cat].push(d);
+            // Categorize for progress bar (use all filtered deals, not category-filtered)
+            const dealsForBar = allDeals.filter(d => {
+                if (currentFilters.team !== 'all' && getTeam(d) !== currentFilters.team) return false;
+                if (currentFilters.ae !== 'all' && d.owner !== currentFilters.ae) return false;
+                return true;
             });
+            
+            const cats = {close:[], push:[], checkpoint:[], lose:[], monitor:[]};
+            dealsForBar.forEach(d => cats[d.category].push(d));
 
             // Progress bar
-            const pct = cat => (cats[cat].length / total * 100).toFixed(1);
+            const barTotal = dealsForBar.length || 1;
+            const pct = cat => (cats[cat].length / barTotal * 100).toFixed(1);
             document.getElementById('progress-bar').innerHTML = `
                 <div class="progress-close" style="width:${pct('close')}%"></div>
                 <div class="progress-push" style="width:${pct('push')}%"></div>
@@ -201,10 +332,10 @@
                 <span><div class="legend-dot" style="background:var(--gray)"></div>Monitor ${cats.monitor.length}</span>
             `;
 
-            // Priority table - top deals from close + push
+            // Priority table - top deals from close + push (filtered)
             const priority = [...cats.close, ...cats.push].slice(0, 15);
             document.getElementById('deals-table').innerHTML = priority.map(d => {
-                const icon = cats.close.includes(d) ? '🎯' : '🚀';
+                const icon = d.category === 'close' ? '🎯' : '🚀';
                 const icpClass = d.meddic_score >= 70 ? 'icp-high' : d.meddic_score >= 50 ? 'icp-med' : d.meddic_score >= 35 ? 'icp-low' : 'icp-poor';
                 const reasoning = getReasoning(d);
                 return `<tr>
@@ -220,7 +351,7 @@
             }).join('');
 
             renderLosses(cats);
-            renderReps(deals, cats);
+            renderReps(deals);
         }
 
         function categorize(d) {
@@ -261,7 +392,7 @@
         // Render losses
         function renderLosses(cats) {
             const losses = cats.lose.slice(0, 10);
-            document.getElementById('losses-table').innerHTML = losses.map(d => {
+            document.getElementById('losses-table').innerHTML = losses.length ? losses.map(d => {
                 const age = Math.floor((Date.now() - new Date(d.close_date || Date.now()).getTime()) / 86400000);
                 return `<tr>
                     <td class="deal-name">${d.name.split(':')[0]}</td>
@@ -271,21 +402,31 @@
                     <td>${age}d</td>
                     <td class="reasoning">ICP score ${Math.round(d.meddic_score)}/100 — poor fit for Telnyx sweet spot</td>
                 </tr>`;
-            }).join('');
+            }).join('') : '<tr><td colspan="6" style="text-align:center;color:var(--muted);padding:24px">No deals recommended for closure</td></tr>';
             const total = losses.reduce((a,d) => a + (d.amount||0), 0);
-            document.getElementById('losses-summary').textContent = `${losses.length} deals · $${(total/1000).toFixed(0)}K pipeline recommended to close`;
+            document.getElementById('losses-summary').textContent = losses.length ? 
+                `${losses.length} deals · $${(total/1000).toFixed(0)}K pipeline recommended to close` :
+                'Pipeline looks healthy for current filter';
         }
 
-        // Render per-rep
-        function renderReps(deals, cats, filter = 'all') {
+        // Render per-rep cards
+        function renderReps(deals) {
             const repData = {};
             deals.forEach(d => {
-                if (!repData[d.owner]) repData[d.owner] = {close:0,push:0,checkpoint:0,lose:0,monitor:0,total:0};
-                const cat = categorize(d);
-                repData[d.owner][cat] += d.amount || 0;
-                repData[d.owner].total += d.amount || 0;
+                const key = d.owner || 'Unassigned';
+                if (!repData[key]) repData[key] = {deals:[], close:0, push:0, checkpoint:0, lose:0, monitor:0, total:0, team: getTeam(d)};
+                repData[key].deals.push(d);
+                repData[key][d.category] += d.amount || 0;
+                repData[key].total += d.amount || 0;
             });
+            
             const reps = Object.entries(repData).sort((a,b) => b[1].total - a[1].total);
+            
+            if (reps.length === 0) {
+                document.getElementById('rep-cards').innerHTML = '<div style="text-align:center;color:var(--muted);padding:40px">No deals match current filters</div>';
+                return;
+            }
+            
             document.getElementById('rep-cards').innerHTML = reps.map(([name, data]) => {
                 const pcts = {
                     close: data.total ? (data.close/data.total*100) : 0,
@@ -294,9 +435,10 @@
                     lose: data.total ? (data.lose/data.total*100) : 0,
                     monitor: data.total ? (data.monitor/data.total*100) : 0
                 };
-                return `<div class="rep-card">
+                const dealCount = data.deals.length;
+                return `<div class="rep-card" onclick="toggleRepDeals('${name.replace(/'/g, "\\'")}')">
                     <div>
-                        <div class="rep-name-big">${name || 'Unassigned'}</div>
+                        <div class="rep-name-big">${name} <span style="color:var(--muted);font-size:12px;font-weight:400">${data.team} · ${dealCount} deal${dealCount !== 1 ? 's' : ''}</span></div>
                         <div class="rep-bar">
                             <div style="width:${pcts.close}%;background:var(--green)"></div>
                             <div style="width:${pcts.push}%;background:var(--blue)"></div>
@@ -306,17 +448,25 @@
                         </div>
                     </div>
                     <div class="rep-pipeline">$${(data.total/1000).toFixed(0)}K</div>
+                </div>
+                <div class="rep-deals" id="deals-${name.replace(/[^a-zA-Z0-9]/g, '_')}" style="display:none;margin-bottom:12px;margin-left:20px">
+                    ${data.deals.map(d => {
+                        const catColors = {close:'var(--green)',push:'var(--blue)',checkpoint:'var(--yellow)',lose:'var(--red)',monitor:'var(--gray)'};
+                        const catIcons = {close:'🎯',push:'🚀',checkpoint:'⚠️',lose:'❌',monitor:'👀'};
+                        return `<div style="display:flex;justify-content:space-between;padding:8px 12px;border-left:3px solid ${catColors[d.category]};background:var(--card);margin-bottom:4px;border-radius:0 8px 8px 0">
+                            <span>${catIcons[d.category]} ${d.name.split(':')[0]}</span>
+                            <span style="color:var(--muted)">$${(d.amount/1000).toFixed(0)}K · Stage ${getStageNum(d.stage)}</span>
+                        </div>`;
+                    }).join('')}
                 </div>`;
             }).join('');
         }
 
-        // Filter buttons
-        document.getElementById('rep-filters').addEventListener('click', e => {
-            if (e.target.classList.contains('filter-btn')) {
-                document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
-                e.target.classList.add('active');
-            }
-        });
+        function toggleRepDeals(name) {
+            const id = 'deals-' + name.replace(/[^a-zA-Z0-9]/g, '_');
+            const el = document.getElementById(id);
+            if (el) el.style.display = el.style.display === 'none' ? 'block' : 'none';
+        }
 
         load();
     </script>
