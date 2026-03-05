@@ -14,9 +14,13 @@ document.addEventListener('DOMContentLoaded', () => {
 // Load data
 async function loadData() {
     try {
-        const response = await fetch('data.json');
-        data = await response.json();
-        tasks = data.tasks || generateSampleTasks();
+        const [dataRes, tasksRes] = await Promise.all([
+            fetch('data.json'),
+            fetch('tasks.json')
+        ]);
+        data = await dataRes.json();
+        const tasksData = await tasksRes.json();
+        tasks = tasksData.tasks || generateSampleTasks();
         renderAll();
     } catch(e) {
         console.error('Error loading data:', e);
