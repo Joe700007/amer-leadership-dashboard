@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AMER Leadership Dashboard</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+</head>
+<body>
+    <div class="dashboard">
+        <header class="header">
+            <h1>🎯 AMER Leadership Dashboard</h1>
+            <div class="header-meta">
+                <span id="last-sync">Last sync: -</span>
+                <button onclick="location.reload()" class="refresh-btn">🔄 Refresh</button>
+            </div>
+        </header>
+
+        <!-- Priority Queues -->
+        <section class="priority-queues">
+            <div class="priority-card p1" onclick="setPriority('p1')">
+                <div class="priority-label">P1 — This Week</div>
+                <div class="priority-count" id="p1-count">-</div>
+            </div>
+            <div class="priority-card p2" onclick="setPriority('p2')">
+                <div class="priority-label">P2 — This Month</div>
+                <div class="priority-count" id="p2-count">-</div>
+            </div>
+            <div class="priority-card p3" onclick="setPriority('p3')">
+                <div class="priority-label">P3 — Quarter</div>
+                <div class="priority-count" id="p3-count">-</div>
+            </div>
+            <div class="priority-card p4" onclick="setPriority('p4')">
+                <div class="priority-label">P4 — Backlog</div>
+                <div class="priority-count" id="p4-count">-</div>
+            </div>
+        </section>
+
+        <!-- Pipeline Metrics -->
+        <section class="metrics-row">
+            <div class="metric-card">
+                <div class="metric-label">Pipeline Deals</div>
+                <div class="metric-value" id="pipeline-deals">-</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Pipeline Value</div>
+                <div class="metric-value" id="pipeline-value">-</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Avg MEDDIC</div>
+                <div class="metric-value" id="avg-meddic">-</div>
+            </div>
+            <div class="metric-card critical">
+                <div class="metric-label">Critical (≤20%)</div>
+                <div class="metric-value" id="critical-count">-</div>
+            </div>
+        </section>
+
+        <!-- Performance Metrics -->
+        <section class="metrics-row">
+            <div class="metric-card">
+                <div class="metric-label">Team Win Rate</div>
+                <div class="metric-value" id="win-rate">-</div>
+            </div>
+            <div class="metric-card">
+                <div class="metric-label">Champion Rate</div>
+                <div class="metric-value" id="champion-rate">-</div>
+            </div>
+            <div class="metric-card highlight">
+                <div class="metric-label">Actions Today</div>
+                <div class="metric-value" id="actions-today">-</div>
+            </div>
+            <div class="metric-card warning">
+                <div class="metric-label">At-Risk Deals</div>
+                <div class="metric-value" id="at-risk">-</div>
+            </div>
+        </section>
+
+        <!-- Main Content Grid -->
+        <div class="main-grid">
+            <!-- Rep Scoreboard -->
+            <section class="card rep-scoreboard">
+                <h2>🏆 Rep Scoreboard (90-Day Rolling)</h2>
+                <table id="rep-table">
+                    <thead>
+                        <tr>
+                            <th>Rep</th>
+                            <th>Team</th>
+                            <th>Win Rate</th>
+                            <th>W/L</th>
+                            <th>Champion %</th>
+                            <th>Pipeline</th>
+                            <th>Avg Deal</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </section>
+
+            <!-- Deal List -->
+            <section class="card deal-list">
+                <h2 id="deal-list-title">💼 P1 Deals — This Week</h2>
+                <div class="deal-filter">
+                    <select id="priority-filter" onchange="filterDeals()">
+                        <option value="p1">P1 — This Week</option>
+                        <option value="p2">P2 — This Month</option>
+                        <option value="p3">P3 — Quarter</option>
+                        <option value="p4">P4 — Backlog</option>
+                        <option value="at_risk">⚠️ At-Risk Deals</option>
+                        <option value="actions">🎯 Actions Today</option>
+                    </select>
+                </div>
+                <table id="deal-table">
+                    <thead>
+                        <tr>
+                            <th>Deal</th>
+                            <th>Owner</th>
+                            <th>Stage</th>
+                            <th>Amount</th>
+                            <th>Close</th>
+                            <th>MEDDIC</th>
+                            <th>Flag</th>
+                        </tr>
+                    </thead>
+                    <tbody></tbody>
+                </table>
+            </section>
+        </div>
+
+        <!-- Charts Row 1 -->
+        <div class="charts-row">
+            <section class="card chart-card">
+                <h2>📊 Pipeline by Team</h2>
+                <canvas id="team-chart"></canvas>
+            </section>
+            <section class="card chart-card">
+                <h2>📈 Stage Distribution</h2>
+                <canvas id="stage-chart"></canvas>
+            </section>
+        </div>
+
+        <!-- Charts Row 2 -->
+        <div class="charts-row">
+            <section class="card chart-card">
+                <h2>🗺️ Pipeline Heatmap</h2>
+                <div id="heatmap" class="heatmap"></div>
+            </section>
+            <section class="card chart-card">
+                <h2>📉 MEDDIC by Rep</h2>
+                <canvas id="meddic-chart"></canvas>
+            </section>
+        </div>
+
+        <!-- Alert Feed -->
+        <section class="card">
+            <h2>📡 Alert Feed</h2>
+            <div id="alert-feed" class="alert-feed"></div>
+        </section>
+
+        <!-- Competitor Battlecards -->
+        <section class="card">
+            <h2>⚔️ Competitor Intel</h2>
+            <div class="battlecard-grid" id="battlecards"></div>
+        </section>
+    </div>
+
+    <script src="app.js"></script>
+</body>
+</html>

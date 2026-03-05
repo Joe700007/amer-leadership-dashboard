@@ -1,0 +1,69 @@
+{
+  "generated_at": "2026-03-05T14:35:00",
+  "last_sync": "2026-03-05T14:35:00",
+  "priority_queues": {
+    "p1": {
+      "label": "This Week",
+      "count": 19,
+      "deals": [
+        {"id": "006f100000e9dOnAAI", "name": "Tresta: Upsell - Enterprise Voice", "owner": "Mike Jakubisin", "team": "Alpha", "stage": "Testing/Negotiation", "amount": 45000, "close_date": "2026-03-07", "meddic_score": 65, "has_champion": true},
+        {"id": "0063a00000gYIwXAAW", "name": "Abalta Technologies: New Customer", "owner": "Sandrena Shields", "team": "Zulu", "stage": "Proposal", "amount": 28000, "close_date": "2026-03-06", "meddic_score": 42, "has_champion": false},
+        {"id": "0063a00000g03KHAAY", "name": "ReplyBuy: Platform Migration", "owner": "Joseph Parker", "team": "Zulu", "stage": "Discovery", "amount": 52000, "close_date": "2026-03-08", "meddic_score": 18, "has_champion": false},
+        {"id": "0063a00000fyozgAAA", "name": "FreshWorks: Global Expansion", "owner": "Erik Ingle", "team": "Foxtrot", "stage": "Testing/Negotiation", "amount": 120000, "close_date": "2026-03-07", "meddic_score": 78, "has_champion": true},
+        {"id": "0063a00000gYSRyAAO", "name": "LTC Technology: Voice Upgrade", "owner": "Mike Jakubisin", "team": "Alpha", "stage": "Proposal", "amount": 35000, "close_date": "2026-03-09", "meddic_score": 55, "has_champion": true},
+        {"id": "006f100000fUjQeAAK", "name": "Telesign: Competitive Displacement", "owner": "Sandrena Shields", "team": "Zulu", "stage": "AE Qualification", "amount": 67000, "close_date": "2026-03-06", "meddic_score": 12, "has_champion": false},
+        {"id": "0063a00000j0hjKAAQ", "name": "NextCentury: IoT Solution", "owner": "Joseph Parker", "team": "Zulu", "stage": "Discovery", "amount": 41000, "close_date": "2026-03-08", "meddic_score": 35, "has_champion": false},
+        {"id": "0064y00000xIxmXAAS", "name": "SUUM Technologies: API Integration", "owner": "Arielle Gelman", "team": "Zulu", "stage": "Testing/Negotiation", "amount": 89000, "close_date": "2026-03-07", "meddic_score": 72, "has_champion": true}
+      ]
+    },
+    "p2": {
+      "label": "This Month",
+      "count": 25,
+      "deals": [
+        {"id": "0064y00000xil4RAAQ", "name": "Paycall: Enterprise Messaging", "owner": "Arielle Gelman", "team": "Zulu", "stage": "Proposal", "amount": 75000, "close_date": "2026-03-15", "meddic_score": 58, "has_champion": true},
+        {"id": "0064y00000abc123", "name": "TechCorp: Full Stack Comms", "owner": "Erik Ingle", "team": "Foxtrot", "stage": "Discovery", "amount": 95000, "close_date": "2026-03-20", "meddic_score": 45, "has_champion": false},
+        {"id": "0064y00000def456", "name": "GlobalHealth: Patient Engagement", "owner": "Mike Jakubisin", "team": "Alpha", "stage": "Testing/Negotiation", "amount": 62000, "close_date": "2026-03-18", "meddic_score": 68, "has_champion": true},
+        {"id": "0064y00000ghi789", "name": "FinServe: Secure Messaging", "owner": "Joseph Parker", "team": "Zulu", "stage": "Proposal", "amount": 48000, "close_date": "2026-03-22", "meddic_score": 52, "has_champion": false}
+      ]
+    },
+    "p3": {
+      "label": "Quarter",
+      "count": 42,
+      "deals": [
+        {"id": "0064y00000jkl012", "name": "MegaRetail: Omnichannel", "owner": "Erik Ingle", "team": "Foxtrot", "stage": "AE Qualification", "amount": 180000, "close_date": "2026-04-15", "meddic_score": 28, "has_champion": false},
+        {"id": "0064y00000mno345", "name": "AutoDrive: Connected Car", "owner": "Sandrena Shields", "team": "Zulu", "stage": "Discovery", "amount": 145000, "close_date": "2026-05-01", "meddic_score": 35, "has_champion": false}
+      ]
+    },
+    "p4": {
+      "label": "Backlog",
+      "count": 329,
+      "deals": [
+        {"id": "0064y00000pqr678", "name": "FutureTech: Long-term Contract", "owner": "Mike Jakubisin", "team": "Alpha", "stage": "AE Qualification", "amount": 250000, "close_date": "2026-09-01", "meddic_score": 15, "has_champion": false}
+      ]
+    }
+  },
+  "pipeline": {
+    "total_deals": 415,
+    "total_amount": 4207750,
+    "avg_meddic": 38.5,
+    "critical_count": 87
+  },
+  "metrics": {
+    "win_rate": 21.3,
+    "champion_rate": 34,
+    "actions_today": 8,
+    "at_risk": 23
+  },
+  "reps": [
+    {"name": "Erik Ingle", "team": "Foxtrot", "deals": 41, "avg_meddic": 48.2, "pipeline": 820000, "win_rate": 26.8, "wins": 11, "losses": 30, "champion_rate": 45},
+    {"name": "Mike Jakubisin", "team": "Alpha", "deals": 45, "avg_meddic": 42.1, "pipeline": 720000, "win_rate": 22.5, "wins": 9, "losses": 31, "champion_rate": 38},
+    {"name": "Joseph Parker", "team": "Zulu", "deals": 38, "avg_meddic": 35.3, "pipeline": 580000, "win_rate": 21.5, "wins": 8, "losses": 29, "champion_rate": 32},
+    {"name": "Arielle Gelman", "team": "Zulu", "deals": 32, "avg_meddic": 51.7, "pipeline": 510000, "win_rate": 28.1, "wins": 9, "losses": 23, "champion_rate": 52},
+    {"name": "Sandrena Shields", "team": "Zulu", "deals": 28, "avg_meddic": 29.8, "pipeline": 450000, "win_rate": 15.3, "wins": 4, "losses": 22, "champion_rate": 25},
+    {"name": "David Chen", "team": "Alpha", "deals": 35, "avg_meddic": 44.5, "pipeline": 620000, "win_rate": 24.2, "wins": 8, "losses": 25, "champion_rate": 41},
+    {"name": "Sarah Williams", "team": "Foxtrot", "deals": 29, "avg_meddic": 38.9, "pipeline": 480000, "win_rate": 19.8, "wins": 6, "losses": 24, "champion_rate": 35},
+    {"name": "Marcus Johnson", "team": "Zulu", "deals": 33, "avg_meddic": 32.4, "pipeline": 390000, "win_rate": 17.6, "wins": 6, "losses": 28, "champion_rate": 28},
+    {"name": "Lisa Park", "team": "Alpha", "deals": 26, "avg_meddic": 55.2, "pipeline": 540000, "win_rate": 31.0, "wins": 9, "losses": 20, "champion_rate": 58},
+    {"name": "James Rodriguez", "team": "Foxtrot", "deals": 31, "avg_meddic": 41.3, "pipeline": 470000, "win_rate": 23.1, "wins": 9, "losses": 30, "champion_rate": 39}
+  ]
+}
