@@ -5,169 +5,219 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Pipeline Review — AMER</title>
     <style>
-        :root { --bg:#0a0a0f; --card:#12131a; --border:#1e1f2a; --text:#f1f5f9; --muted:#64748b; --green:#10b981; --yellow:#f59e0b; --red:#ef4444; --blue:#3b82f6; }
+        :root { --bg:#0a0e14; --card:#111820; --card-hl:#0c2920; --border:#1a2030; --text:#e2e8f0; --muted:#64748b; --green:#10b981; --blue:#3b82f6; --yellow:#f59e0b; --red:#ef4444; --gray:#475569; }
         * { margin:0; padding:0; box-sizing:border-box; }
-        body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:var(--bg); color:var(--text); padding:20px; }
-        .header { display:flex; justify-content:space-between; align-items:center; margin-bottom:24px; padding-bottom:16px; border-bottom:1px solid var(--border); }
-        .header h1 { font-size:22px; }
-        .header a { color:var(--blue); text-decoration:none; }
-        .team-select { background:var(--card); border:1px solid var(--border); color:var(--text); padding:8px 16px; border-radius:6px; font-size:14px; }
-        .section { margin-bottom:32px; }
-        .section-header { display:flex; align-items:center; gap:12px; margin-bottom:16px; font-size:18px; font-weight:600; }
-        .section-header .count { color:var(--muted); font-weight:400; }
-        .section-header .value { color:var(--green); }
-        .deals { display:flex; flex-direction:column; gap:8px; }
-        .deal { display:grid; grid-template-columns:200px 180px 90px 60px 50px 50px 1fr 180px; gap:12px; align-items:center; background:var(--card); padding:14px 16px; border-radius:8px; border:1px solid var(--border); font-size:13px; }
-        .deal:hover { border-color:var(--blue); }
+        body { font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif; background:var(--bg); color:var(--text); min-height:100vh; }
+        .container { max-width:1400px; margin:0 auto; padding:32px; }
+        
+        .header h1 { font-size:26px; font-weight:600; margin-bottom:8px; }
+        .header h1 span { color:var(--green); }
+        .meta { display:flex; gap:24px; color:var(--muted); font-size:13px; margin-bottom:32px; }
+        .meta span { display:flex; align-items:center; gap:6px; }
+        
+        .metrics { display:grid; grid-template-columns:repeat(4,1fr); gap:16px; margin-bottom:24px; }
+        .metric { background:var(--card); border:1px solid var(--border); border-radius:12px; padding:24px; text-align:center; }
+        .metric.highlight { background:var(--card-hl); border-color:#10b98150; }
+        .metric-value { font-size:32px; font-weight:700; margin-bottom:4px; }
+        .metric.highlight .metric-value { color:var(--green); }
+        .metric-label { font-size:12px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; }
+        
+        .progress-bar { display:flex; height:12px; border-radius:6px; overflow:hidden; margin-bottom:12px; }
+        .progress-bar div { height:100%; }
+        .progress-close { background:var(--green); }
+        .progress-push { background:var(--blue); }
+        .progress-checkpoint { background:var(--yellow); }
+        .progress-lose { background:var(--red); }
+        .progress-monitor { background:var(--gray); }
+        
+        .legend { display:flex; gap:20px; font-size:12px; color:var(--muted); margin-bottom:32px; }
+        .legend span { display:flex; align-items:center; gap:6px; }
+        .legend-dot { width:10px; height:10px; border-radius:50%; }
+        
+        .section-header { display:flex; align-items:center; gap:8px; font-size:18px; font-weight:600; margin-bottom:8px; }
+        .section-sub { color:var(--muted); font-size:13px; margin-bottom:20px; }
+        
+        table { width:100%; border-collapse:collapse; }
+        th { text-align:left; font-size:11px; text-transform:uppercase; color:var(--muted); padding:12px 8px; border-bottom:1px solid var(--border); font-weight:500; }
+        td { padding:16px 8px; border-bottom:1px solid var(--border); font-size:14px; vertical-align:middle; }
+        tr:hover { background:#ffffff05; }
+        
+        .deal-icon { font-size:18px; }
         .deal-name { font-weight:500; }
-        .deal-stage { color:var(--muted); font-size:12px; }
-        .deal-mrr { font-weight:600; }
-        .deal-upside { color:var(--muted); }
-        .deal-score { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:12px; }
-        .score-high { background:#10b98130; color:var(--green); }
-        .score-med { background:#f59e0b30; color:var(--yellow); }
-        .score-low { background:#ef444430; color:var(--red); }
-        .deal-days { color:var(--muted); font-size:12px; }
-        .deal-next { color:var(--muted); font-size:12px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-        .tags { display:flex; flex-wrap:wrap; gap:4px; }
-        .tag { padding:2px 6px; border-radius:3px; font-size:10px; }
-        .tag-stale { background:#ef444430; color:var(--red); }
-        .tag-stalled { background:#f59e0b30; color:var(--yellow); }
-        .tag-strong-icp { background:#10b98130; color:var(--green); }
-        .tag-high-mmc { background:#3b82f630; color:var(--blue); }
-        .tag-no-next-step { background:#ef444430; color:var(--red); }
-        .close-section .section-header { color:#10b981; }
-        .push-section .section-header { color:#3b82f6; }
-        .checkpoint-section .section-header { color:#f59e0b; }
-        .monitor-section .section-header { color:#64748b; }
+        .rep-name { color:var(--muted); }
+        .value { font-weight:600; }
+        .mmc { color:var(--muted); }
+        
+        .icp-score { width:36px; height:36px; border-radius:50%; display:flex; align-items:center; justify-content:center; font-weight:600; font-size:13px; }
+        .icp-high { background:#10b98130; color:var(--green); }
+        .icp-med { background:#3b82f630; color:var(--blue); }
+        .icp-low { background:#f59e0b30; color:var(--yellow); }
+        .icp-poor { background:#ef444430; color:var(--red); }
+        
+        .stage { font-size:13px; }
+        .stage-num { color:var(--muted); }
+        .reasoning { color:var(--muted); font-size:13px; max-width:300px; }
+        
+        .back-link { display:inline-block; margin-bottom:24px; color:var(--blue); text-decoration:none; font-size:14px; }
     </style>
 </head>
 <body>
-    <div class="header">
-        <h1>Pipeline Review — <select class="team-select" id="team-select" onchange="loadTeam()">
-            <option value="all">All AMER</option>
-            <option value="zulu">Team Zulu</option>
-            <option value="foxtrot">Team Foxtrot</option>
-            <option value="alpha">Team Alpha</option>
-        </select></h1>
-        <a href="/">← Back to Dashboard</a>
+    <div class="container">
+        <a href="/" class="back-link">← Back to Dashboard</a>
+        
+        <div class="header">
+            <h1>Pipeline Review — <span id="team-name">All AMER</span></h1>
+            <div class="meta">
+                <span>Review Date: <span id="review-date">2026-03-05</span></span>
+                <span>Generated: <span id="gen-time"></span></span>
+                <span>ICP + MEDDPICC Triage</span>
+            </div>
+        </div>
+
+        <div class="metrics">
+            <div class="metric">
+                <div class="metric-value" id="total-opps">0</div>
+                <div class="metric-label">Total Opps</div>
+            </div>
+            <div class="metric highlight">
+                <div class="metric-value" id="total-pipeline">$0</div>
+                <div class="metric-label">Total Pipeline</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="total-mmc">$0</div>
+                <div class="metric-label">Total MMC</div>
+            </div>
+            <div class="metric">
+                <div class="metric-value" id="reps-count">0</div>
+                <div class="metric-label">Reps Reviewed</div>
+            </div>
+        </div>
+
+        <div class="progress-bar" id="progress-bar"></div>
+        <div class="legend" id="legend"></div>
+
+        <div class="section-header">🎯 Priority Actions</div>
+        <div class="section-sub">Top deals tagged CLOSE or high-priority PUSH across the team.</div>
+
+        <table>
+            <thead>
+                <tr>
+                    <th></th>
+                    <th>Deal</th>
+                    <th>Rep</th>
+                    <th>Value</th>
+                    <th>MMC</th>
+                    <th>ICP</th>
+                    <th>Stage</th>
+                    <th>Reasoning</th>
+                </tr>
+            </thead>
+            <tbody id="deals-table"></tbody>
+        </table>
     </div>
 
-    <section class="section close-section">
-        <div class="section-header">🎯 CLOSE <span class="count" id="close-count">(0)</span> — <span class="value" id="close-value">$0</span></div>
-        <div class="deals" id="close-deals"></div>
-    </section>
-
-    <section class="section push-section">
-        <div class="section-header">🚀 PUSH <span class="count" id="push-count">(0)</span> — <span class="value" id="push-value">$0</span></div>
-        <div class="deals" id="push-deals"></div>
-    </section>
-
-    <section class="section checkpoint-section">
-        <div class="section-header">⚠️ CHECKPOINT <span class="count" id="checkpoint-count">(0)</span> — <span class="value" id="checkpoint-value">$0</span></div>
-        <div class="deals" id="checkpoint-deals"></div>
-    </section>
-
-    <section class="section monitor-section">
-        <div class="section-header">👀 MONITOR <span class="count" id="monitor-count">(0)</span> — <span class="value" id="monitor-value">$0</span></div>
-        <div class="deals" id="monitor-deals"></div>
-    </section>
-
     <script>
-        let data = null;
-        
         async function load() {
             const res = await fetch('data.json');
-            data = await res.json();
-            render();
+            const data = await res.json();
+            render(data);
         }
 
-        function categorizeDeal(d) {
-            // CLOSE: Stage 3+ and score >= 50
-            if (d.stage && d.stage.includes('Testing') && d.meddic_score >= 50) return 'close';
-            // PUSH: Stage 1-2 and score >= 60
+        function render(data) {
+            const now = new Date();
+            document.getElementById('review-date').textContent = now.toISOString().split('T')[0];
+            document.getElementById('gen-time').textContent = now.toLocaleString('en-US', {month:'long',day:'numeric',year:'numeric',hour:'numeric',minute:'2-digit',hour12:true}) + ' ET';
+
+            let deals = [];
+            Object.values(data.priority_queues).forEach(q => deals.push(...q.deals));
+
+            const total = deals.length;
+            const pipeline = deals.reduce((a,d) => a + (d.amount||0), 0);
+            const reps = [...new Set(deals.map(d => d.owner))].length;
+
+            document.getElementById('total-opps').textContent = total;
+            document.getElementById('total-pipeline').textContent = '$' + (pipeline/1000000).toFixed(1) + 'M';
+            document.getElementById('total-mmc').textContent = '$' + (pipeline/1000).toFixed(0) + 'K';
+            document.getElementById('reps-count').textContent = reps;
+
+            // Categorize
+            const cats = {close:[], push:[], checkpoint:[], lose:[], monitor:[]};
+            deals.forEach(d => {
+                const cat = categorize(d);
+                cats[cat].push(d);
+            });
+
+            // Progress bar
+            const pct = cat => (cats[cat].length / total * 100).toFixed(1);
+            document.getElementById('progress-bar').innerHTML = `
+                <div class="progress-close" style="width:${pct('close')}%"></div>
+                <div class="progress-push" style="width:${pct('push')}%"></div>
+                <div class="progress-checkpoint" style="width:${pct('checkpoint')}%"></div>
+                <div class="progress-lose" style="width:${pct('lose')}%"></div>
+                <div class="progress-monitor" style="width:${pct('monitor')}%"></div>
+            `;
+            document.getElementById('legend').innerHTML = `
+                <span><div class="legend-dot" style="background:var(--green)"></div>Close ${cats.close.length}</span>
+                <span><div class="legend-dot" style="background:var(--blue)"></div>Push ${cats.push.length}</span>
+                <span><div class="legend-dot" style="background:var(--yellow)"></div>Checkpoint ${cats.checkpoint.length}</span>
+                <span><div class="legend-dot" style="background:var(--red)"></div>Lose ${cats.lose.length}</span>
+                <span><div class="legend-dot" style="background:var(--gray)"></div>Monitor ${cats.monitor.length}</span>
+            `;
+
+            // Priority table - top deals from close + push
+            const priority = [...cats.close, ...cats.push].slice(0, 15);
+            document.getElementById('deals-table').innerHTML = priority.map(d => {
+                const icon = cats.close.includes(d) ? '🎯' : '🚀';
+                const icpClass = d.meddic_score >= 70 ? 'icp-high' : d.meddic_score >= 50 ? 'icp-med' : d.meddic_score >= 35 ? 'icp-low' : 'icp-poor';
+                const reasoning = getReasoning(d);
+                return `<tr>
+                    <td class="deal-icon">${icon}</td>
+                    <td class="deal-name">${d.name.split(':')[0]}</td>
+                    <td class="rep-name">${d.owner || '-'}</td>
+                    <td class="value">$${(d.amount/1000).toFixed(0)},000</td>
+                    <td class="mmc">${d.has_champion ? '$'+(d.amount/1000).toFixed(0)+',000' : '—'}</td>
+                    <td><div class="icp-score ${icpClass}">${Math.round(d.meddic_score)}</div></td>
+                    <td class="stage"><span class="stage-num">${getStageNum(d.stage)}:</span> ${getStageShort(d.stage)}</td>
+                    <td class="reasoning">${reasoning}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function categorize(d) {
+            if (d.stage?.includes('Testing') && d.meddic_score >= 50) return 'close';
             if (d.meddic_score >= 60) return 'push';
-            // CHECKPOINT: Stale (>180 days) or low score
-            const days = Math.floor((Date.now() - new Date(d.close_date).getTime()) / 86400000);
-            if (d.meddic_score < 50 && d.meddic_score >= 40) return 'checkpoint';
-            // MONITOR: Everything else
+            if (d.meddic_score < 30) return 'lose';
+            if (d.meddic_score < 50) return 'checkpoint';
             return 'monitor';
         }
 
-        function getTags(d) {
-            const tags = [];
-            const days = getDaysInPipeline(d);
-            if (days > 180) tags.push('stale');
-            if (d.meddic_score >= 60) tags.push('strong-icp');
-            if (d.amount >= 50000) tags.push('high-mmc');
-            if (!d.has_champion) tags.push('no-next-step');
-            return tags;
+        function getStageNum(s) {
+            if (!s) return '0';
+            if (s.includes('Qualification')) return '0';
+            if (s.includes('Discovery')) return '1';
+            if (s.includes('Proposal')) return '2';
+            if (s.includes('Testing')) return '3';
+            if (s.includes('Ramp')) return '4';
+            return '0';
         }
 
-        function getDaysInPipeline(d) {
-            if (!d.created_date) return 0;
-            return Math.floor((Date.now() - new Date(d.created_date).getTime()) / 86400000);
+        function getStageShort(s) {
+            if (!s) return 'Unknown';
+            if (s.includes('Testing')) return 'Testing and Negotiation';
+            if (s.includes('Proposal')) return 'Proposal and Quoting';
+            if (s.includes('Discovery')) return 'Discovery & Scoping';
+            if (s.includes('Qualification')) return 'AE Qualification';
+            return s;
         }
 
-        function getScoreClass(s) {
-            if (s >= 60) return 'score-high';
-            if (s >= 40) return 'score-med';
-            return 'score-low';
+        function getReasoning(d) {
+            if (d.stage?.includes('Testing') && d.meddic_score >= 60) return 'Late stage — focus on closing';
+            if (d.meddic_score >= 70) return `ICP score ${Math.round(d.meddic_score)}/100 — strong fit, worth investing time`;
+            if (d.has_champion) return `$${(d.amount/1000).toFixed(0)}K MMC — high quota impact if closed`;
+            if (d.meddic_score < 40) return 'Stalled indicator — needs attention';
+            return 'Review next steps';
         }
 
-        function fmt(n) { return '$' + (n/1000).toFixed(0) + 'K'; }
-
-        function renderDeal(d) {
-            const tags = getTags(d);
-            const days = getDaysInPipeline(d);
-            return `
-                <div class="deal">
-                    <div class="deal-name">${d.name.split(':')[0]}</div>
-                    <div class="deal-stage">${d.stage}</div>
-                    <div class="deal-mrr">${fmt(d.amount)}</div>
-                    <div class="deal-upside">—</div>
-                    <div class="deal-score ${getScoreClass(d.meddic_score)}">${Math.round(d.meddic_score)}</div>
-                    <div class="deal-days">${days}d</div>
-                    <div class="deal-next">${d.has_champion ? '👑 Champion identified' : 'No next step'}</div>
-                    <div class="tags">${tags.map(t => `<span class="tag tag-${t}">${t}</span>`).join('')}</div>
-                </div>
-            `;
-        }
-
-        function render() {
-            const team = document.getElementById('team-select').value;
-            let deals = [];
-            Object.values(data.priority_queues).forEach(q => deals.push(...q.deals));
-            
-            if (team !== 'all') {
-                deals = deals.filter(d => d.team.toLowerCase() === team);
-            }
-
-            const close = deals.filter(d => categorizeDeal(d) === 'close');
-            const push = deals.filter(d => categorizeDeal(d) === 'push');
-            const checkpoint = deals.filter(d => categorizeDeal(d) === 'checkpoint');
-            const monitor = deals.filter(d => categorizeDeal(d) === 'monitor');
-
-            const sum = arr => arr.reduce((a, d) => a + (d.amount || 0), 0);
-
-            document.getElementById('close-count').textContent = `(${close.length})`;
-            document.getElementById('close-value').textContent = fmt(sum(close));
-            document.getElementById('close-deals').innerHTML = close.map(renderDeal).join('') || '<div style="color:#64748b;padding:20px">No deals</div>';
-
-            document.getElementById('push-count').textContent = `(${push.length})`;
-            document.getElementById('push-value').textContent = fmt(sum(push));
-            document.getElementById('push-deals').innerHTML = push.map(renderDeal).join('') || '<div style="color:#64748b;padding:20px">No deals</div>';
-
-            document.getElementById('checkpoint-count').textContent = `(${checkpoint.length})`;
-            document.getElementById('checkpoint-value').textContent = fmt(sum(checkpoint));
-            document.getElementById('checkpoint-deals').innerHTML = checkpoint.map(renderDeal).join('') || '<div style="color:#64748b;padding:20px">No deals</div>';
-
-            document.getElementById('monitor-count').textContent = `(${monitor.length})`;
-            document.getElementById('monitor-value').textContent = fmt(sum(monitor));
-            document.getElementById('monitor-deals').innerHTML = monitor.map(renderDeal).join('') || '<div style="color:#64748b;padding:20px">No deals</div>';
-        }
-
-        function loadTeam() { render(); }
         load();
     </script>
 </body>
