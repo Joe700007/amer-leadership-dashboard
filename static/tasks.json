@@ -10,6 +10,17 @@
       "assignee": "@joe",
       "tags": ["taskforce", "ai", "bpo"],
       "created": "2026-03-05T15:44:00Z"
+    },
+    {
+      "id": "task-002",
+      "title": "Hire SF AE",
+      "description": "Hire Account Executive for San Francisco territory",
+      "priority": "p1",
+      "impact": "L",
+      "status": "open",
+      "assignee": "@joe",
+      "tags": ["hiring", "sf", "ae"],
+      "created": "2026-03-06T09:13:00Z"
     }
   ]
 }
