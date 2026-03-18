@@ -74,7 +74,7 @@ function renderAll() {
 // Render tasks
 function renderTasks() {
     const openTasks = tasks.filter(t => t.status === 'open');
-    const completedTasks = tasks.filter(t => t.status === 'completed');
+    const completedTasks = tasks.filter(t => t.status === 'completed' || t.status === 'dismissed');
     const p1 = openTasks.filter(t => t.priority === 'p1');
     const p2 = openTasks.filter(t => t.priority === 'p2');
     const p3 = openTasks.filter(t => t.priority === 'p3');
